@@ -25,6 +25,76 @@ service cloud.firestore {
       }
     }
 
+    // 운영자 목록: Firebase 콘솔에서 admins/{운영자 uid} 문서를 직접 만든다. 화면은 본인 문서만 읽어 운영자인지 확인한다
+    match /admins/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // 기술 Q&A: 누구나 읽고, Google 로그인한 사람은 질문을 쓴다.
+    // 답변은 운영자만 쓰고 고친다. 삭제는 쓴 사람 또는 운영자.
+    match /questions/{questionId} {
+      allow read: if true;
+      allow create: if isValidQuestion(request.resource.data);
+      allow update: if isOperator()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['answer'])
+        && isValidAnswer(request.resource.data.answer);
+      allow delete: if isOperator() || isAuthor(resource.data);
+    }
+
+    // 정보 공유: 누구나 읽고, Google 로그인한 사람은 글을 쓴다. 고치기는 없고, 삭제는 쓴 사람 또는 운영자.
+    match /tips/{tipId} {
+      allow read: if true;
+      allow create: if isValidTip(request.resource.data);
+      allow update: if false;
+      allow delete: if isOperator() || isAuthor(resource.data);
+    }
+
+    function isOperator() {
+      return request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function isAuthor(d) {
+      return request.auth != null && d.authorUid == request.auth.uid;
+    }
+
+    function isText(value, max) {
+      return value is string && value.size() > 0 && value.size() <= max;
+    }
+
+    // 질문·정보 글 공통: 로그인한 본인 uid로만, 글자 수 제한 안에서 (src/content/landing.ts posts.limits와 같게)
+    function isValidPost(d) {
+      return request.auth != null
+        && d.authorUid == request.auth.uid
+        && isText(d.authorName, 12)
+        && isText(d.title, 60)
+        && isText(d.body, 1000)
+        && d.createdAt == request.time;
+    }
+
+    function isValidQuestion(d) {
+      return d.keys().hasAll(['authorUid', 'authorName', 'stroke', 'title', 'body', 'createdAt'])
+        && d.keys().hasOnly(['authorUid', 'authorName', 'stroke', 'title', 'body', 'createdAt'])
+        && isValidPost(d)
+        && d.stroke in ['자유형', '배영', '평영', '접영', '기타'];
+    }
+
+    function isValidAnswer(a) {
+      return a is map
+        && a.keys().hasAll(['body', 'answeredAt'])
+        && a.keys().hasOnly(['body', 'answeredAt'])
+        && isText(a.body, 2000)
+        && a.answeredAt == request.time;
+    }
+
+    function isValidTip(d) {
+      return d.keys().hasAll(['authorUid', 'authorName', 'category', 'title', 'body', 'createdAt'])
+        && d.keys().hasOnly(['authorUid', 'authorName', 'category', 'title', 'body', 'link', 'createdAt'])
+        && isValidPost(d)
+        && d.category in ['technique', 'gear', 'pool', 'health', 'etc']
+        && (!('link' in d) || (isText(d.link, 300) && d.link.matches('^https?://[^\\s]+$')));
+    }
+
     function isValidSignup(d) {
       return d.keys().hasAll(['name', 'phone', 'email', 'frequency', 'agreed', 'createdAt'])
         && d.keys().hasOnly(['name', 'phone', 'email', 'frequency', 'level', 'goal', 'referral', 'agreed', 'createdAt'])

@@ -1,4 +1,4 @@
-import type { Level, ReferralSource, Stroke, SwimFrequency } from '@/lib/types';
+import type { Level, Question, ReferralSource, Stroke, SwimFrequency, Tip, TipCategory } from '@/lib/types';
 
 /** 페이지의 모든 문구와 예시 데이터. 컴포넌트에는 문구를 하드코딩하지 않는다. */
 
@@ -13,10 +13,13 @@ export const site = {
 
 export const header = {
   homeLabel: '나만의 워터로그 챌린지 홈',
+  // 다른 페이지(Q&A, 정보 공유)에서도 홈 섹션으로 갈 수 있게 '/#...' 형태로 쓴다
   nav: [
-    { href: '#how', label: '참여 방법' },
-    { href: '#board', label: '인증·진행판' },
-    { href: '#faq', label: 'FAQ' },
+    { href: '/#how', label: '참여 방법' },
+    { href: '/#board', label: '인증·진행판' },
+    { href: '/qna', label: '기술 Q&A' },
+    { href: '/tips', label: '정보 공유' },
+    { href: '/#faq', label: 'FAQ' },
   ],
   navLabel: '주요 메뉴',
   cta: '사전 등록',
@@ -239,6 +242,174 @@ export const signup = {
   },
   limits: { name: 20, goal: 200 },
 } as const;
+
+/** 홈에서 Q&A·정보 공유 게시판으로 안내하는 섹션 */
+export const community = {
+  eyebrow: '함께 배워요',
+  title: '물어보고, 나눠요',
+  cards: [
+    {
+      href: '/qna',
+      title: '수영 기술 Q&A',
+      description: '막히는 동작이 있으면 언제든 물어보세요. 운영자가 직접 답해 드려요.',
+      cta: '질문하러 가기',
+    },
+    {
+      href: '/tips',
+      title: '수영 정보 공유',
+      description: '도움이 된 팁, 용품, 수영장 정보를 참여자끼리 나눠요.',
+      cta: '게시판 보기',
+    },
+  ],
+} as const;
+
+/** Q&A·정보 공유에서 같이 쓰는 문구 */
+export const posts = {
+  sampleBadge: '예시',
+  sampleNotice: '아직 게시판이 연결되지 않아 예시 글만 보여요. 실제 참여자의 글이 아니에요.',
+  nameLabel: '참여 아이디',
+  namePlaceholder: '예: 물개',
+  titleLabel: '제목',
+  bodyLabel: '내용',
+  loading: '글을 불러오는 중…',
+  loadError: '글을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+  saveError: '저장하지 못했어요. 잠시 후 다시 시도해 주세요.',
+  submitting: '올리는 중…',
+  allFilter: '전체',
+  filterLabel: '분류',
+  empty: '아직 글이 없어요. 첫 글을 남겨 주세요!',
+  delete: '삭제',
+  deleteConfirm: '이 글을 삭제할까요? 되돌릴 수 없어요.',
+  operatorTag: '운영자',
+  mineTag: '내 글',
+  limits: { name: 12, title: 60, body: 1000, answer: 2000, link: 300 },
+  errors: {
+    nameRequired: '참여 아이디를 입력해 주세요.',
+    nameTooLong: '참여 아이디는 12자 이내로 입력해 주세요.',
+    titleRequired: '제목을 입력해 주세요.',
+    titleTooLong: '제목은 60자 이내로 입력해 주세요.',
+    bodyRequired: '내용을 입력해 주세요.',
+    bodyTooLong: '내용은 1000자 이내로 입력해 주세요.',
+    answerRequired: '답변을 입력해 주세요.',
+    answerTooLong: '답변은 2000자 이내로 입력해 주세요.',
+    linkInvalid: '링크는 http:// 또는 https://로 시작하는 주소로 입력해 주세요.',
+    linkTooLong: '링크는 300자 이내로 입력해 주세요.',
+  },
+  privacyNote: '전화번호, 이메일 같은 개인정보는 적지 말아 주세요. 모든 참여자에게 공개돼요.',
+} as const;
+
+export const qna = {
+  pageTitle: '수영 기술 Q&A | 나만의 워터로그 챌린지',
+  pageDescription: '수영 기술이 궁금할 때 질문하면 운영자가 답해 드려요.',
+  eyebrow: '기술 Q&A',
+  title: '수영 기술, 무엇이든 물어보세요',
+  description: '막히는 동작이나 궁금한 점을 남기면 운영자가 확인하고 답해 드려요.',
+  formTitle: '질문하기',
+  strokeLabel: '어떤 영법이에요?',
+  titlePlaceholder: '예: 자유형 호흡할 때 물을 자꾸 먹어요',
+  bodyPlaceholder: '어떤 상황에서 어떻게 되는지 적어 주시면 더 정확하게 답할 수 있어요.',
+  submit: '질문 올리기',
+  submitted: '질문을 올렸어요! 운영자가 확인하고 답해 드릴게요.',
+  listTitle: '질문 목록',
+  statusLabel: '답변 상태',
+  statusOptions: { all: '전체', waiting: '답변 대기', answered: '답변 완료' },
+  waiting: '답변 대기',
+  answered: '답변 완료',
+  answerHeading: '운영자 답변',
+  answerLabel: '답변 쓰기',
+  answerPlaceholder: '참여자가 바로 따라 해 볼 수 있게 구체적으로 적어 주세요.',
+  answerSubmit: '답변 올리기',
+  answerUpdate: '답변 고치기',
+  answerEdit: '답변 수정',
+  answerCancel: '취소',
+  count: (n: number) => `${n}개`,
+} as const;
+
+export const tips = {
+  pageTitle: '수영 정보 공유 | 나만의 워터로그 챌린지',
+  pageDescription: '도움이 된 수영 팁, 용품, 수영장 정보를 참여자끼리 나눠요.',
+  eyebrow: '정보 공유',
+  title: '나만 알기 아까운 수영 정보',
+  description: '도움이 된 연습법, 용품, 수영장 정보를 서로 나눠요.',
+  formTitle: '정보 나누기',
+  categoryLabel: '분류',
+  categoryOptions: {
+    technique: '기술·연습법',
+    gear: '용품',
+    pool: '수영장',
+    health: '건강·회복',
+    etc: '기타',
+  } satisfies Record<TipCategory, string>,
+  titlePlaceholder: '예: 킥판 발차기 10분이 호흡 연습에 좋아요',
+  bodyPlaceholder: '어떻게 해 봤고, 무엇이 좋았는지 적어 주세요.',
+  linkLabel: '참고 링크 (선택)',
+  linkPlaceholder: 'https://',
+  linkOpen: '참고 링크 열기',
+  submit: '정보 올리기',
+  submitted: '글을 올렸어요! 아래 목록에서 확인해 보세요.',
+  listTitle: '공유된 정보',
+  count: (n: number) => `${n}개`,
+} as const;
+
+/** Google 로그인 (글쓰기는 로그인한 사람만, 답변은 운영자만) */
+export const auth = {
+  signIn: 'Google로 로그인',
+  signOut: '로그아웃',
+  checking: '로그인 상태를 확인하는 중…',
+  signInPrompt: '글을 쓰려면 Google 계정으로 로그인해 주세요. 게시판에는 Google 이름 대신 직접 정한 참여 아이디가 보여요.',
+  signedIn: (email: string) => `${email}로 로그인됨`,
+  operatorBadge: '운영자',
+  signInError: '로그인하지 못했어요. 잠시 후 다시 시도해 주세요.',
+  notConnected: '게시판이 아직 연결되지 않아 로그인과 글쓰기를 할 수 없어요. 챌린지 시작 전에 열어 드릴게요.',
+} as const;
+
+/** 게시판이 연결되기 전(Firebase 설정값이 없을 때)에만 보여 주는 예시 글 (createdAt은 ms) */
+export const samplePosts = {
+  questions: [
+    {
+      id: 'sample-q1',
+      authorUid: 'sample',
+      authorName: '참가자 A',
+      stroke: '자유형',
+      title: '호흡할 때 물을 자꾸 먹어요',
+      body: '오른쪽으로 숨 쉴 때마다 물이 입으로 들어와요. 고개를 더 들어야 할까요?',
+      createdAt: Date.UTC(2026, 9, 27, 3),
+      answer: {
+        body: '고개를 드는 것보다 몸을 옆으로 굴리는 게 먼저예요. 한쪽 귀는 물에 대고, 입은 어깨 쪽으로 반만 돌려 보세요. 숨은 물속에서 코로 미리 내쉬어 두면 입을 열었을 때 바로 들이마실 수 있어요.',
+        answeredAt: Date.UTC(2026, 9, 27, 9),
+      },
+    },
+    {
+      id: 'sample-q2',
+      authorUid: 'sample',
+      authorName: '참가자 C',
+      stroke: '평영',
+      title: '발차기를 해도 앞으로 안 나가요',
+      body: '평영 발차기를 열심히 하는데 제자리에 있는 느낌이에요.',
+      createdAt: Date.UTC(2026, 9, 28, 1),
+    },
+  ],
+  tips: [
+    {
+      id: 'sample-t1',
+      authorUid: 'sample',
+      authorName: '참가자 B',
+      category: 'technique',
+      title: '킥판 잡고 호흡만 10분 연습',
+      body: '수업 전에 킥판을 잡고 발차기하면서 호흡만 연습했더니 자유형이 훨씬 편해졌어요.',
+      createdAt: Date.UTC(2026, 9, 26, 12),
+    },
+    {
+      id: 'sample-t2',
+      authorUid: 'sample',
+      authorName: '참가자 D',
+      category: 'gear',
+      title: '김서림 방지는 수경 안쪽을 만지지 않기',
+      body: '수경 안쪽을 손가락으로 닦으면 김서림 방지 코팅이 금방 벗겨져요. 물로 헹구기만 하세요.',
+      createdAt: Date.UTC(2026, 9, 28, 5),
+    },
+  ],
+} as const satisfies { questions: readonly Question[]; tips: readonly Tip[] };
 
 export const strokeOptions: readonly Stroke[] = ['자유형', '배영', '평영', '접영', '기타'];
 

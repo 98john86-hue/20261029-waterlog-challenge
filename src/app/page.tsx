@@ -1,3 +1,4 @@
+import { Community } from '@/components/sections/Community';
 import { Faq } from '@/components/sections/Faq';
 import { Footer } from '@/components/sections/Footer';
 import { Hero } from '@/components/sections/Hero';
@@ -14,6 +15,7 @@ export default function Home() {
         <Hero />
         <HowItWorks />
         <WeeklyBoard />
+        <Community />
         <Faq />
         <SignupCta />
       </main>
