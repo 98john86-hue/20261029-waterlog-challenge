@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 type SectionHeadingProps = {
   id: string;
   eyebrow: string;
+  /** 줄을 바꿀 곳에 \n */
   title: string;
   description?: string;
   badge?: ReactNode;
@@ -16,7 +17,7 @@ export function SectionHeading({ id, eyebrow, title, description, badge, tone = 
       <p className={`text-sm font-bold tracking-wider ${inverse ? 'text-cyan-100' : 'text-teal-700'}`}>{eyebrow}</p>
       <h2
         id={id}
-        className={`mt-2 text-2xl font-extrabold tracking-tight sm:text-4xl ${inverse ? 'text-white' : 'text-slate-900'}`}
+        className={`mt-2 text-2xl font-extrabold tracking-tight whitespace-pre-line sm:text-4xl ${inverse ? 'text-white' : 'text-slate-900'}`}
       >
         {title}
       </h2>

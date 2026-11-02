@@ -4,7 +4,7 @@ import type { Level, Question, ReferralSource, Stroke, SwimFrequency, Tip, TipCa
 
 export const site = {
   name: '나만의 워터로그 챌린지',
-  title: '나만의 워터로그 챌린지 | 3주, 매일 한 줄씩 쌓이는 나의 수영',
+  title: '나만의 워터로그 챌린지 | 매일 한 줄씩 쌓이는 나의 수영 일지',
   description:
     '11월 9일부터 3주 동안 평일 주 3~5회, 수영 거리나 배운 점을 기록하는 챌린지. 많이 못 헤엄친 날도 배운 점 한 줄이면 성공이에요. 지금 사전 등록하세요.',
   ogDescription: '거리 또는 배운 점, 하나만 기록하면 오늘도 성공. 나만의 워터로그 챌린지 사전 등록 중.',
@@ -27,15 +27,16 @@ export const header = {
 
 export const hero = {
   eyebrow: '사전 등록 중',
-  headlineLines: ['3주, 매일 한 줄씩', '쌓이는 나의 수영'],
-  subcopy: '오늘 익힌 기술은 한 줄로 남기고, 내일 물속에서 다시 꺼내 써요.',
-  body: '거리 또는 기술, 하나만 기록해도 인증 완료. 11월 9일부터 3주 동안 평일 주 3~5회, 주말은 쉬어요. 11월 30일은 마무리 날이에요.',
+  headlineLines: ['매일 한 줄씩 쌓이는', '나의 수영 일지'],
+  // 한 항목이 화면에서 한 줄
+  subcopyLines: ['오늘 익힌 기술을 한 줄로 남기고,', '내일 다시 적용해 봅시다.'],
+  bodyLines: ['거리 또는 기술, 하나만 기록해도 인증 완료.', '11월 9일부터 3주간, 평일 주 3~5회', '11월 30일은 마무리 날이에요.'],
   primaryCta: '챌린지 사전 등록하기',
 } as const;
 
 export const howItWorks = {
   eyebrow: '참여 방법',
-  title: '수영하고, 한 줄 남기면 끝',
+  title: '내 수영 기록을 남기고,\n다른 사람들과 공유해요',
   steps: [
     { title: '사전 등록', description: '시작 전에 일정과 참여 방법을 알려드려요.' },
     {

@@ -17,8 +17,20 @@ export function Hero() {
             </span>
           ))}
         </h1>
-        <p className="mt-5 text-lg font-bold text-slate-800 sm:text-xl">{hero.subcopy}</p>
-        <p className="mt-2 text-slate-700">{hero.body}</p>
+        <p className="mt-5 text-lg font-bold text-slate-800 sm:text-xl">
+          {hero.subcopyLines.map((line) => (
+            <span key={line} className="block">
+              {line}
+            </span>
+          ))}
+        </p>
+        <p className="mt-3 text-slate-700">
+          {hero.bodyLines.map((line) => (
+            <span key={line} className="block">
+              {line}
+            </span>
+          ))}
+        </p>
         <ButtonLink href="#signup" className="mt-8 w-full sm:w-auto">
           {hero.primaryCta}
         </ButtonLink>
