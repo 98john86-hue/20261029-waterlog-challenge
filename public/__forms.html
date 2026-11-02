@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <title>forms</title>
+  </head>
+  <body>
+    <!--
+      넷리파이 폼 등록용 파일 (화면에는 쓰지 않아요).
+      넷리파이가 배포할 때 이 폼을 찾아 "signup-alert"로 등록하고,
+      사전 신청이 저장되면 src/lib/signupAlert.ts가 이 주소로 이름·수영 빈도만 보내요.
+      운영자는 넷리파이의 Form submission notifications로 알림 메일을 받아요.
+      휴대폰 번호·이메일은 보내지 않아요 (Firebase signups에서 확인).
+    -->
+    <form name="signup-alert" data-netlify="true" netlify-honeypot="bot-field" hidden>
+      <input type="hidden" name="form-name" value="signup-alert" />
+      <input name="bot-field" />
+      <input name="name" />
+      <input name="frequency" />
+    </form>
+  </body>
+</html>
