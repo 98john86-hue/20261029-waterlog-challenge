@@ -234,7 +234,7 @@ export const signup = {
     six: '주 6회',
   } satisfies Record<SwimFrequency, string>,
   levelLabel: '지금 수영 강습 등록을 하셨다면 레벨은?',
-  levelHint: '강습을 듣지 않으면 비워 두셔도 돼요.',
+  levelHint: '강습을 듣지 않으면 비워 두셔도 돼요. 고른 걸 다시 누르면 선택이 풀려요.',
   levelOptions: {
     beginner: '초급',
     intermediate: '중급',
