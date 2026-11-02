@@ -6,7 +6,7 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-sky-100 bg-white/90 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-        <a href="#top" aria-label={header.homeLabel} className="flex items-center gap-2 font-extrabold text-teal-800">
+        <a href="/" aria-label={header.homeLabel} className="flex items-center gap-2 font-extrabold text-teal-800">
           <span className="grid size-9 place-items-center rounded-full bg-teal-700 text-white">
             <Icon name="wave" className="size-5" />
           </span>
@@ -22,7 +22,7 @@ export function SiteHeader() {
               </li>
             ))}
           </ul>
-          <ButtonLink href="#signup" size="sm">
+          <ButtonLink href="/#signup" size="sm">
             {header.cta}
           </ButtonLink>
         </nav>

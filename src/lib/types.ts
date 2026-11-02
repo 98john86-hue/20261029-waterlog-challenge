@@ -34,3 +34,40 @@ export type SignupData = {
   agreed: boolean; // 개인정보 수집·이용 동의 (필수)
 };
 export type SignupResult = { ok: true } | { ok: false; message: string };
+
+/** 수영 기술 질문 (참여자가 묻고 운영자가 답한다) */
+export type QuestionDraft = {
+  authorName: string; // 참여 아이디 (필수)
+  stroke: Stroke; // 어떤 영법에 대한 질문인지
+  title: string;
+  body: string;
+};
+
+export type Answer = {
+  body: string;
+  answeredAt: number; // ms
+};
+
+export type Question = QuestionDraft & {
+  id: string;
+  authorUid: string; // 쓴 사람의 Google 로그인 uid (본인 글 삭제용)
+  createdAt: number; // ms
+  answer?: Answer;
+};
+
+/** 정보 공유 게시판 글 */
+export type TipCategory = 'technique' | 'gear' | 'pool' | 'health' | 'etc';
+
+export type TipDraft = {
+  authorName: string;
+  category: TipCategory;
+  title: string;
+  body: string;
+  link?: string; // 참고 링크 (선택, http/https)
+};
+
+export type Tip = TipDraft & {
+  id: string;
+  authorUid: string;
+  createdAt: number; // ms
+};

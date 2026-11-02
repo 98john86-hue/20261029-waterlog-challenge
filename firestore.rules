@@ -12,17 +12,140 @@ service cloud.firestore {
       allow create: if isValidSignup(request.resource.data);
     }
 
-    // [챌린지 시작 후] 참여자 정보와 하루 인증 기록
-    // 진행판은 모두가 보고, 기록은 로그인한 본인만 쓴다.
+    // 오늘의 인증(/challenge): 참여자 정보와 하루 인증 기록
+    // 진행판은 모두가 보고, 기록은 Google 로그인한 본인만 쓴다. 운영자는 지울 수 있다.
     match /participants/{uid} {
       allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if isSelf(uid) && isValidParticipant(request.resource.data);
+      allow delete: if isSelf(uid) || isOperator();
 
+      // 챌린지 날짜만, 그날(한국 시간 0시)이 된 뒤에만 인증할 수 있다. 지난 날짜는 나중에 고칠 수 있다.
       match /days/{date} {
         allow read: if true;
-        allow write: if request.auth != null && request.auth.uid == uid
-          && date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+        allow create, update: if isSelf(uid)
+          && date in challengeDates()
+          && request.time >= timestamp.value(date + 'T00:00:00+09:00')
+          && isValidDay(request.resource.data);
+        allow delete: if isSelf(uid) || isOperator();
       }
+    }
+
+    function isSelf(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // src/content/landing.ts의 challenge 일정과 같게: 11/9~11/27 평일 3주 + 11/30 마무리 날
+    function challengeDates() {
+      return [
+        '2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12', '2026-11-13',
+        '2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19', '2026-11-20',
+        '2026-11-23', '2026-11-24', '2026-11-25', '2026-11-26', '2026-11-27',
+        '2026-11-30'
+      ];
+    }
+
+    // 참여 아이디 12자 이하, 주간 목표 3~5회
+    function isValidParticipant(d) {
+      return d.keys().hasAll(['name', 'goal', 'updatedAt'])
+        && d.keys().hasOnly(['name', 'goal', 'updatedAt'])
+        && isText(d.name, 12)
+        && d.goal is int && d.goal >= 3 && d.goal <= 5
+        && d.updatedAt == request.time;
+    }
+
+    // 거리(25/50m 레인, 1~200바퀴)나 배운 점(200자 이하) 중 하나 이상
+    function isValidDay(d) {
+      return d.keys().hasOnly(['distance', 'learning', 'updatedAt'])
+        && d.keys().hasAny(['distance', 'learning'])
+        && d.updatedAt == request.time
+        && (!('distance' in d) || isValidDistance(d.distance))
+        && (!('learning' in d) || isValidLearning(d.learning));
+    }
+
+    function isValidDistance(v) {
+      return v is map
+        && v.keys().hasAll(['laneLength', 'laps'])
+        && v.keys().hasOnly(['laneLength', 'laps'])
+        && v.laneLength in [25, 50]
+        && v.laps is int && v.laps >= 1 && v.laps <= 200;
+    }
+
+    function isValidLearning(v) {
+      return v is map
+        && v.keys().hasAll(['note'])
+        && v.keys().hasOnly(['note', 'stroke'])
+        && isText(v.note, 200)
+        && (!('stroke' in v) || v.stroke in ['자유형', '배영', '평영', '접영', '기타']);
+    }
+
+    // 운영자 목록: Firebase 콘솔에서 admins/{운영자 uid} 문서를 직접 만든다. 화면은 본인 문서만 읽어 운영자인지 확인한다
+    match /admins/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // 기술 Q&A: 누구나 읽고, Google 로그인한 사람은 질문을 쓴다.
+    // 답변은 운영자만 쓰고 고친다. 삭제는 쓴 사람 또는 운영자.
+    match /questions/{questionId} {
+      allow read: if true;
+      allow create: if isValidQuestion(request.resource.data);
+      allow update: if isOperator()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['answer'])
+        && isValidAnswer(request.resource.data.answer);
+      allow delete: if isOperator() || isAuthor(resource.data);
+    }
+
+    // 정보 공유: 누구나 읽고, Google 로그인한 사람은 글을 쓴다. 고치기는 없고, 삭제는 쓴 사람 또는 운영자.
+    match /tips/{tipId} {
+      allow read: if true;
+      allow create: if isValidTip(request.resource.data);
+      allow update: if false;
+      allow delete: if isOperator() || isAuthor(resource.data);
+    }
+
+    function isOperator() {
+      return request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function isAuthor(d) {
+      return request.auth != null && d.authorUid == request.auth.uid;
+    }
+
+    function isText(value, max) {
+      return value is string && value.size() > 0 && value.size() <= max;
+    }
+
+    // 질문·정보 글 공통: 로그인한 본인 uid로만, 글자 수 제한 안에서 (src/content/landing.ts posts.limits와 같게)
+    function isValidPost(d) {
+      return request.auth != null
+        && d.authorUid == request.auth.uid
+        && isText(d.authorName, 12)
+        && isText(d.title, 60)
+        && isText(d.body, 1000)
+        && d.createdAt == request.time;
+    }
+
+    function isValidQuestion(d) {
+      return d.keys().hasAll(['authorUid', 'authorName', 'stroke', 'title', 'body', 'createdAt'])
+        && d.keys().hasOnly(['authorUid', 'authorName', 'stroke', 'title', 'body', 'createdAt'])
+        && isValidPost(d)
+        && d.stroke in ['자유형', '배영', '평영', '접영', '기타'];
+    }
+
+    function isValidAnswer(a) {
+      return a is map
+        && a.keys().hasAll(['body', 'answeredAt'])
+        && a.keys().hasOnly(['body', 'answeredAt'])
+        && isText(a.body, 2000)
+        && a.answeredAt == request.time;
+    }
+
+    function isValidTip(d) {
+      return d.keys().hasAll(['authorUid', 'authorName', 'category', 'title', 'body', 'createdAt'])
+        && d.keys().hasOnly(['authorUid', 'authorName', 'category', 'title', 'body', 'link', 'createdAt'])
+        && isValidPost(d)
+        && d.category in ['technique', 'gear', 'pool', 'health', 'etc']
+        && (!('link' in d) || (isText(d.link, 300) && d.link.matches('^https?://[^\\s]+$')));
     }
 
     function isValidSignup(d) {

@@ -2,26 +2,33 @@
 
 import { useState, type FormEvent } from 'react';
 import { board, challenge, strokeOptions } from '@/content/landing';
-import { getDayLogs, getWeekDates, type DayLogs } from '@/lib/board';
+import { getDayLogs, type DayLogs } from '@/lib/board';
 import { formatLogDate } from '@/lib/date';
 import { formatMeters, getTotalDistance } from '@/lib/distance';
 import type { Stroke, SwimLog } from '@/lib/types';
 import { buttonStyles } from '@/components/ui/Button';
 
+export type DateOption = { date: string; label: string };
+
 type CheckInFormProps = {
+  /** 인증할 수 있는 날짜 (비어 있지 않아야 한다) */
+  dateOptions: readonly DateOption[];
+  /** 처음 고를 날짜 (보통 오늘) */
+  initialDate: string;
   myLogs: readonly SwimLog[];
   name: string;
   onNameChange: (name: string) => void;
   goal: number;
   onGoalChange: (goal: number) => void;
-  onSave: (date: string, next: DayLogs) => void;
+  /** 빈 DayLogs면 그날 인증을 지운다. 실패하면 throw */
+  onSave: (date: string, next: DayLogs) => Promise<void>;
 };
 
 const copy = board.form;
 
-const dateOptions = Array.from({ length: challenge.weeks }, (_, week) =>
-  getWeekDates(challenge.startDate, week).map((date) => ({ date, label: copy.dateOption(week + 1, formatLogDate(date)) })),
-).flat();
+export const NAME_MAX = 12;
+export const LAPS_MAX = 200;
+export const NOTE_MAX = 200;
 
 const labelClass = 'block font-bold text-slate-900';
 const hintClass = 'mt-0.5 text-sm text-slate-600';
@@ -36,21 +43,22 @@ const goalOptions = Array.from(
 const isStroke = (value: string): value is Stroke => (strokeOptions as readonly string[]).includes(value);
 
 /** 첨부된 인증 화면처럼 날짜 → 아이디 → 거리 → 습득한 기술 순서의 한 장짜리 폼 */
-export function CheckInForm({ myLogs, name, onNameChange, goal, onGoalChange, onSave }: CheckInFormProps) {
-  const [date, setDate] = useState(dateOptions[0]?.date ?? challenge.startDate);
+export function CheckInForm({ dateOptions, initialDate, myLogs, name, onNameChange, goal, onGoalChange, onSave }: CheckInFormProps) {
+  const [date, setDate] = useState(initialDate);
   const [laneLength, setLaneLength] = useState<number>(copy.laneOptions[0]);
   const [laps, setLaps] = useState('');
   const [stroke, setStroke] = useState<Stroke>('자유형');
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const existing = getDayLogs(myLogs, date);
   const hasExisting = Boolean(existing.distance || existing.learning);
 
   // 날짜를 바꾸면 그날 이미 낸 인증으로 입력칸을 채운다
-  const changeDate = (next: string) => {
-    const day = getDayLogs(myLogs, next);
+  const changeDate = (next: string, logs: readonly SwimLog[] = myLogs) => {
+    const day = getDayLogs(logs, next);
     setDate(next);
     setLaneLength(day.distance?.laneLength ?? copy.laneOptions[0]);
     setLaps(day.distance ? String(day.distance.laps) : '');
@@ -64,25 +72,55 @@ export function CheckInForm({ myLogs, name, onNameChange, goal, onGoalChange, on
   const hasDistance = Number.isFinite(lapCount) && lapCount > 0;
   const trimmedNote = note.trim();
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  /** 저장하고 결과 문구를 보여 준다. 실패하면 안내 문구를 보여 주고 false */
+  const save = async (next: DayLogs, done: string): Promise<boolean> => {
+    setSaving(true);
+    setError('');
+    setMessage('');
+    try {
+      await onSave(date, next);
+      setMessage(done);
+      return true;
+    } catch (e) {
+      console.error('인증 저장 실패', e);
+      setError(copy.saveError);
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!hasDistance && !trimmedNote) {
-      setError(copy.emptyError);
+    if (saving) return;
+    const problem = !name.trim()
+      ? copy.nameRequired
+      : !hasDistance && !trimmedNote
+        ? copy.emptyError
+        : hasDistance && lapCount > LAPS_MAX
+          ? copy.lapsTooMany
+          : '';
+    if (problem) {
+      setError(problem);
       setMessage('');
       return;
     }
-    onSave(date, {
-      ...(hasDistance ? { distance: { type: 'distance', date, laneLength, laps: lapCount } } : {}),
-      ...(trimmedNote ? { learning: { type: 'learning', date, stroke, note: trimmedNote } } : {}),
-    });
-    setError('');
-    setMessage(copy.success(formatLogDate(date)));
+    await save(
+      {
+        ...(hasDistance ? { distance: { type: 'distance', date, laneLength, laps: lapCount } } : {}),
+        ...(trimmedNote ? { learning: { type: 'learning', date, stroke, note: trimmedNote } } : {}),
+      },
+      copy.success(formatLogDate(date)),
+    );
   };
 
-  const handleRemove = () => {
-    onSave(date, {});
-    changeDate(date);
-    setMessage(copy.removed(formatLogDate(date)));
+  const handleRemove = async () => {
+    if (saving) return;
+    const done = copy.removed(formatLogDate(date));
+    if (!(await save({}, done))) return;
+    // 지운 뒤에는 빈 칸으로
+    changeDate(date, []);
+    setMessage(done);
   };
 
   return (
@@ -110,7 +148,7 @@ export function CheckInForm({ myLogs, name, onNameChange, goal, onGoalChange, on
         <input
           id="checkin-name"
           type="text"
-          maxLength={12}
+          maxLength={NAME_MAX}
           autoComplete="nickname"
           value={name}
           placeholder={copy.namePlaceholder}
@@ -174,7 +212,7 @@ export function CheckInForm({ myLogs, name, onNameChange, goal, onGoalChange, on
               type="number"
               inputMode="numeric"
               min={0}
-              max={200}
+              max={LAPS_MAX}
               value={laps}
               placeholder={copy.lapsPlaceholder}
               onChange={(e) => {
@@ -217,7 +255,7 @@ export function CheckInForm({ myLogs, name, onNameChange, goal, onGoalChange, on
         <textarea
           id="checkin-note"
           rows={4}
-          maxLength={200}
+          maxLength={NOTE_MAX}
           value={note}
           placeholder={copy.skillPlaceholder}
           onChange={(e) => {
@@ -233,13 +271,14 @@ export function CheckInForm({ myLogs, name, onNameChange, goal, onGoalChange, on
         <p role="alert" className="text-sm font-medium text-red-700 empty:hidden">
           {error}
         </p>
-        <button type="submit" className={`${buttonStyles()} w-full`}>
-          {hasExisting ? copy.update : copy.submit}
+        <button type="submit" disabled={saving} className={`${buttonStyles()} w-full`}>
+          {saving ? copy.saving : hasExisting ? copy.update : copy.submit}
         </button>
         {hasExisting ? (
           <button
             type="button"
             onClick={handleRemove}
+            disabled={saving}
             className="self-center rounded-full px-3 py-1.5 text-sm font-bold text-red-700 hover:bg-red-50"
           >
             {copy.remove}
@@ -248,7 +287,6 @@ export function CheckInForm({ myLogs, name, onNameChange, goal, onGoalChange, on
         <p role="status" className="text-center font-bold text-emerald-800 empty:hidden">
           {message}
         </p>
-        <p className="text-center text-xs text-slate-600">{copy.notSaved}</p>
       </div>
     </form>
   );

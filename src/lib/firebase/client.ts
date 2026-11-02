@@ -3,7 +3,7 @@ import { connectFirestoreEmulator, getFirestore, type Firestore } from 'firebase
 import { readFirebaseConfig } from '@/lib/firebase/config';
 
 /** 앱은 한 번만 초기화한다 (개발 중 화면이 다시 그려져도 중복 생성 방지) */
-function getFirebaseApp(): FirebaseApp {
+export function getFirebaseApp(): FirebaseApp {
   if (getApps().length > 0) return getApp();
   const config = readFirebaseConfig();
   if (!config) throw new Error('Firebase 설정값이 없어요. .env.local을 확인해 주세요.');

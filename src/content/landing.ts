@@ -1,22 +1,25 @@
-import type { Level, ReferralSource, Stroke, SwimFrequency } from '@/lib/types';
+import type { Level, Question, ReferralSource, Stroke, SwimFrequency, Tip, TipCategory } from '@/lib/types';
 
 /** 페이지의 모든 문구와 예시 데이터. 컴포넌트에는 문구를 하드코딩하지 않는다. */
 
 export const site = {
   name: '나만의 워터로그 챌린지',
-  title: '나만의 워터로그 챌린지 | 한 달, 매일 한 줄씩 쌓이는 나의 수영',
+  title: '나만의 워터로그 챌린지 | 3주, 매일 한 줄씩 쌓이는 나의 수영',
   description:
-    '한 달(4주) 동안 평일 주 3~5회, 수영 거리나 배운 점을 기록하는 챌린지. 많이 못 헤엄친 날도 배운 점 한 줄이면 성공이에요. 지금 사전 등록하세요.',
+    '11월 9일부터 3주 동안 평일 주 3~5회, 수영 거리나 배운 점을 기록하는 챌린지. 많이 못 헤엄친 날도 배운 점 한 줄이면 성공이에요. 지금 사전 등록하세요.',
   ogDescription: '거리 또는 배운 점, 하나만 기록하면 오늘도 성공. 나만의 워터로그 챌린지 사전 등록 중.',
   locale: 'ko_KR',
 } as const;
 
 export const header = {
   homeLabel: '나만의 워터로그 챌린지 홈',
+  // 다른 페이지(Q&A, 정보 공유)에서도 홈 섹션으로 갈 수 있게 '/#...' 형태로 쓴다
   nav: [
-    { href: '#how', label: '참여 방법' },
-    { href: '#board', label: '인증·진행판' },
-    { href: '#faq', label: 'FAQ' },
+    { href: '/#how', label: '참여 방법' },
+    { href: '/challenge', label: '오늘의 인증' },
+    { href: '/qna', label: '기술 Q&A' },
+    { href: '/tips', label: '정보 공유' },
+    { href: '/#faq', label: 'FAQ' },
   ],
   navLabel: '주요 메뉴',
   cta: '사전 등록',
@@ -24,9 +27,9 @@ export const header = {
 
 export const hero = {
   eyebrow: '사전 등록 중',
-  headlineLines: ['한 달, 매일 한 줄씩', '쌓이는 나의 수영'],
+  headlineLines: ['3주, 매일 한 줄씩', '쌓이는 나의 수영'],
   subcopy: '오늘 익힌 기술은 한 줄로 남기고, 내일 물속에서 다시 꺼내 써요.',
-  body: '거리 또는 기술, 하나만 기록해도 인증 완료. 4주 동안 평일 주 3~5회, 주말은 쉬어요.',
+  body: '거리 또는 기술, 하나만 기록해도 인증 완료. 11월 9일부터 3주 동안 평일 주 3~5회, 주말은 쉬어요. 11월 30일은 마무리 날이에요.',
   primaryCta: '챌린지 사전 등록하기',
 } as const;
 
@@ -40,7 +43,7 @@ export const howItWorks = {
       description: '거리나 습득한 기술, 하나만 남겨도 인증돼요.',
       examples: ['거리: 25m × 6바퀴 = 300m', '기술: 자유형 팔은 옆으로 돌린다'],
     },
-    { title: '4주 완주', description: '한 달의 기록이 나만의 수영 노트가 돼요.' },
+    { title: '3주 완주 + 마무리 날', description: '11월 30일 마무리 날까지, 3주의 기록이 나만의 수영 노트가 돼요.' },
   ],
   lapNote: '1바퀴는 왕복 기준(25m 레인 = 50m)이에요.',
 } as const;
@@ -48,10 +51,15 @@ export const howItWorks = {
 export const levelOrder: readonly Level[] = ['beginner', 'intermediate', 'advanced'];
 
 
-/** 챌린지 일정 (예시 일정: 시작일은 1주차 월요일) */
+/**
+ * 챌린지 일정: 11/9(월)~11/27(금) 3주 + 11/30(월) 마무리 날.
+ * 시작일은 1주차 월요일. 마무리 날은 인증은 받지만 주간 목표에는 넣지 않는다.
+ * 날짜를 바꾸면 firestore.rules의 challengeDates()도 같이 바꾼다.
+ */
 export const challenge = {
-  startDate: '2026-11-02',
-  weeks: 4,
+  startDate: '2026-11-09',
+  weeks: 3,
+  bonusDate: '2026-11-30',
   weeklyMin: 3,
   weeklyMax: 5,
 } as const;
@@ -61,20 +69,35 @@ export type SampleParticipant = {
   name: string;
   /** 참여자가 정한 주간 목표 인증 횟수 (3~5) */
   goal: number;
-  /** 주차별 월~금 기록 패턴. D=거리, L=배운 점, B=둘 다, -=없음 */
+  /** 주차별 월~금 기록 패턴. D=거리, L=배운 점, B=둘 다, -=없음. 마지막 한 글자는 마무리 날 */
   weeks: readonly string[];
 };
 
 export const board = {
+  pageTitle: '오늘의 인증 | 나만의 워터로그 챌린지',
+  pageDescription: '수영하고 거리나 배운 점을 인증하고, 모든 참여자의 진행판을 확인해요.',
   eyebrow: '오늘의 인증',
   title: '수영하고, 바로 인증해요',
-  description: '평일(월~금) 23:59까지 인증해요. 예전 날짜를 골라 이미 낸 인증도 고칠 수 있어요.',
-  sampleBadge: '체험용',
+  description: '평일(월~금)에 수영하고 인증해요. 깜빡했다면 지난 날짜를 골라 나중에 인증하거나 고칠 수 있어요.',
+  signInPrompt: '인증하려면 Google 계정으로 로그인해 주세요. 진행판에는 Google 이름 대신 직접 정한 참여 아이디가 보여요.',
+  notOpenYet: (date: string) => `${date}부터 인증할 수 있어요. 그날 다시 만나요!`,
+  loading: '진행판을 불러오는 중…',
+  loadError: '진행판을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+  emptyBoard: '아직 인증한 참여자가 없어요. 첫 인증을 남겨 보세요!',
+  // 홈의 진행판 미리보기
+  preview: {
+    eyebrow: '진행판 미리보기',
+    title: '이렇게 함께 기록해요',
+    description: '참여자는 매일 인증하고, 모두의 기록이 한 표에 모여요. 아래는 예시예요.',
+    cta: '오늘의 인증 하러 가기',
+  },
   form: {
     dateLabel: '인증할 날짜',
     dateOption: (week: number, date: string) => `${week}주차 · ${date}`,
+    bonusOption: (date: string) => `마무리 날 · ${date}`,
     nameLabel: '참여 아이디',
-    nameHint: '진행판에 보일 이름이에요. 비워 두면 “나”로 보여요.',
+    nameHint: '진행판에 보일 이름이에요. 12자까지 쓸 수 있어요.',
+    nameRequired: '참여 아이디를 입력해 주세요.',
     namePlaceholder: '예: 물개',
     goalLabel: '나의 주간 목표',
     goalHint: '한 주에 몇 번 인증할지 정해요. 채우면 진행판에 🏅가 붙어요.',
@@ -92,19 +115,23 @@ export const board = {
     update: '인증 수정하기',
     remove: '이 날 인증 지우기',
     emptyError: '거리(바퀴 수)나 습득한 기술 중 하나는 적어 주세요.',
+    lapsTooMany: '바퀴 수는 200 이하로 적어 주세요.',
     success: (date: string) => `${date} 인증 완료! 아래 진행판에 반영됐어요.`,
     removed: (date: string) => `${date} 인증을 지웠어요.`,
-    notSaved: '체험용이라 입력한 기록은 저장되지 않아요.',
+    saving: '저장하는 중…',
+    saveError: '저장하지 못했어요. 잠시 후 다시 시도해 주세요.',
   },
   boardTitle: '전체 진행판',
-  boardDescription: '주간 목표를 달성한 참여자부터, 기록이 많은 순으로 보여요. 다른 참여자 이름과 기록은 예시예요.',
+  boardDescription: '주간 목표를 달성한 참여자부터, 기록이 많은 순으로 보여요.',
   sampleNotice: '예시 데이터',
   weekTabsLabel: '주차 선택',
   weekLabel: (n: number) => `${n}주차`,
+  bonusLabel: '마무리',
   tableCaption: (n: number) => `${n}주차 참여자별 인증 기록 (월~금, 목표 달성자와 기록이 많은 순)`,
+  bonusCaption: '마무리 날 참여자별 인증 기록',
+  bonusHint: '마무리 날은 주간 목표에 들어가지 않아요. 3주를 돌아보며 한 번 더 기록해요.',
+  bonusDone: '인증',
   participantHeader: '참여자',
-  weekdayHeaders: ['월', '화', '수', '목', '금'],
-  meName: '나',
   meTag: '나',
   weeklyCount: (count: number, goal: number) => `${count}/${goal}회`,
   goalMedal: '🏅',
@@ -137,11 +164,11 @@ export const board = {
     ] as const satisfies ReadonlyArray<{ stroke: Stroke; note: string }>,
   },
   participants: [
-    { id: 'a', name: '참가자 A', goal: 4, weeks: ['DLB-L', 'BLD-B', 'D-L-D', 'LB---'] },
-    { id: 'b', name: '참가자 B', goal: 5, weeks: ['BBDBL', 'BDBLB', 'DBBDL', 'BB---'] },
-    { id: 'c', name: '참가자 C', goal: 3, weeks: ['L-L-D', '-L-D-', 'LD-L-', 'L----'] },
-    { id: 'd', name: '참가자 D', goal: 4, weeks: ['D-D-D', 'DDL-D', 'B-D-D', 'D-D--'] },
-    { id: 'e', name: '참가자 E', goal: 3, weeks: ['-L---', 'L-L-L', '-BL-B', '-L---'] },
+    { id: 'a', name: '참가자 A', goal: 4, weeks: ['DLB-L', 'BLD-B', 'D-L-D', 'L'] },
+    { id: 'b', name: '참가자 B', goal: 5, weeks: ['BBDBL', 'BDBLB', 'DBBDL', 'B'] },
+    { id: 'c', name: '참가자 C', goal: 3, weeks: ['L-L-D', '-L-D-', 'LD-L-', 'L'] },
+    { id: 'd', name: '참가자 D', goal: 4, weeks: ['D-D-D', 'DDL-D', 'B-D-D', 'D'] },
+    { id: 'e', name: '참가자 E', goal: 3, weeks: ['-L---', 'L-L-L', '-BL-B', '-'] },
   ] as const satisfies ReadonlyArray<SampleParticipant>,
 } as const;
 
@@ -164,6 +191,11 @@ export const faq = {
       question: '하루를 놓치면 어떻게 되나요?',
       answer:
         '괜찮아요. 평일(월~금) 중 주 3~5회만 인증하면 그 주는 성공이에요. 주말은 쉬고, 하루 놓쳐도 같은 주의 다른 평일에 채우면 돼요.',
+    },
+    {
+      question: '11월 30일 마무리 날은 뭐예요?',
+      answer:
+        '3주(11/9~11/27)를 마친 뒤 한 번 더 수영하고 기록을 남기는 날이에요. 주간 목표에는 들어가지 않으니 부담 없이 3주를 돌아보며 인증해 주세요.',
     },
     {
       question: '다른 참여자가 제 기록을 볼 수 있나요?',
@@ -207,7 +239,7 @@ export const signup = {
     intermediate: '중급',
     advanced: '상급',
   } satisfies Record<Level, string>,
-  goalLabel: '이번 한 달 동안 가장 바꾸고 싶은 건 뭐예요?',
+  goalLabel: '이번 챌린지 동안 가장 바꾸고 싶은 건 뭐예요?',
   goalPlaceholder: '예: 자유형 호흡이 편해졌으면 좋겠어요',
   referralLabel: '어디서 보고 오셨어요?',
   referralOptions: {
@@ -239,6 +271,174 @@ export const signup = {
   },
   limits: { name: 20, goal: 200 },
 } as const;
+
+/** 홈에서 Q&A·정보 공유 게시판으로 안내하는 섹션 */
+export const community = {
+  eyebrow: '함께 배워요',
+  title: '물어보고, 나눠요',
+  cards: [
+    {
+      href: '/qna',
+      title: '수영 기술 Q&A',
+      description: '막히는 동작이 있으면 언제든 물어보세요. 운영자가 직접 답해 드려요.',
+      cta: '질문하러 가기',
+    },
+    {
+      href: '/tips',
+      title: '수영 정보 공유',
+      description: '도움이 된 팁, 용품, 수영장 정보를 참여자끼리 나눠요.',
+      cta: '게시판 보기',
+    },
+  ],
+} as const;
+
+/** Q&A·정보 공유에서 같이 쓰는 문구 */
+export const posts = {
+  sampleBadge: '예시',
+  sampleNotice: '아직 게시판이 연결되지 않아 예시 글만 보여요. 실제 참여자의 글이 아니에요.',
+  nameLabel: '참여 아이디',
+  namePlaceholder: '예: 물개',
+  titleLabel: '제목',
+  bodyLabel: '내용',
+  loading: '글을 불러오는 중…',
+  loadError: '글을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+  saveError: '저장하지 못했어요. 잠시 후 다시 시도해 주세요.',
+  submitting: '올리는 중…',
+  allFilter: '전체',
+  filterLabel: '분류',
+  empty: '아직 글이 없어요. 첫 글을 남겨 주세요!',
+  delete: '삭제',
+  deleteConfirm: '이 글을 삭제할까요? 되돌릴 수 없어요.',
+  operatorTag: '운영자',
+  mineTag: '내 글',
+  limits: { name: 12, title: 60, body: 1000, answer: 2000, link: 300 },
+  errors: {
+    nameRequired: '참여 아이디를 입력해 주세요.',
+    nameTooLong: '참여 아이디는 12자 이내로 입력해 주세요.',
+    titleRequired: '제목을 입력해 주세요.',
+    titleTooLong: '제목은 60자 이내로 입력해 주세요.',
+    bodyRequired: '내용을 입력해 주세요.',
+    bodyTooLong: '내용은 1000자 이내로 입력해 주세요.',
+    answerRequired: '답변을 입력해 주세요.',
+    answerTooLong: '답변은 2000자 이내로 입력해 주세요.',
+    linkInvalid: '링크는 http:// 또는 https://로 시작하는 주소로 입력해 주세요.',
+    linkTooLong: '링크는 300자 이내로 입력해 주세요.',
+  },
+  privacyNote: '전화번호, 이메일 같은 개인정보는 적지 말아 주세요. 모든 참여자에게 공개돼요.',
+} as const;
+
+export const qna = {
+  pageTitle: '수영 기술 Q&A | 나만의 워터로그 챌린지',
+  pageDescription: '수영 기술이 궁금할 때 질문하면 운영자가 답해 드려요.',
+  eyebrow: '기술 Q&A',
+  title: '수영 기술, 무엇이든 물어보세요',
+  description: '막히는 동작이나 궁금한 점을 남기면 운영자가 확인하고 답해 드려요.',
+  formTitle: '질문하기',
+  strokeLabel: '어떤 영법이에요?',
+  titlePlaceholder: '예: 자유형 호흡할 때 물을 자꾸 먹어요',
+  bodyPlaceholder: '어떤 상황에서 어떻게 되는지 적어 주시면 더 정확하게 답할 수 있어요.',
+  submit: '질문 올리기',
+  submitted: '질문을 올렸어요! 운영자가 확인하고 답해 드릴게요.',
+  listTitle: '질문 목록',
+  statusLabel: '답변 상태',
+  statusOptions: { all: '전체', waiting: '답변 대기', answered: '답변 완료' },
+  waiting: '답변 대기',
+  answered: '답변 완료',
+  answerHeading: '운영자 답변',
+  answerLabel: '답변 쓰기',
+  answerPlaceholder: '참여자가 바로 따라 해 볼 수 있게 구체적으로 적어 주세요.',
+  answerSubmit: '답변 올리기',
+  answerUpdate: '답변 고치기',
+  answerEdit: '답변 수정',
+  answerCancel: '취소',
+  count: (n: number) => `${n}개`,
+} as const;
+
+export const tips = {
+  pageTitle: '수영 정보 공유 | 나만의 워터로그 챌린지',
+  pageDescription: '도움이 된 수영 팁, 용품, 수영장 정보를 참여자끼리 나눠요.',
+  eyebrow: '정보 공유',
+  title: '나만 알기 아까운 수영 정보',
+  description: '도움이 된 연습법, 용품, 수영장 정보를 서로 나눠요.',
+  formTitle: '정보 나누기',
+  categoryLabel: '분류',
+  categoryOptions: {
+    technique: '기술·연습법',
+    gear: '용품',
+    pool: '수영장',
+    health: '건강·회복',
+    etc: '기타',
+  } satisfies Record<TipCategory, string>,
+  titlePlaceholder: '예: 킥판 발차기 10분이 호흡 연습에 좋아요',
+  bodyPlaceholder: '어떻게 해 봤고, 무엇이 좋았는지 적어 주세요.',
+  linkLabel: '참고 링크 (선택)',
+  linkPlaceholder: 'https://',
+  linkOpen: '참고 링크 열기',
+  submit: '정보 올리기',
+  submitted: '글을 올렸어요! 아래 목록에서 확인해 보세요.',
+  listTitle: '공유된 정보',
+  count: (n: number) => `${n}개`,
+} as const;
+
+/** Google 로그인 (글쓰기는 로그인한 사람만, 답변은 운영자만) */
+export const auth = {
+  signIn: 'Google로 로그인',
+  signOut: '로그아웃',
+  checking: '로그인 상태를 확인하는 중…',
+  signInPrompt: '글을 쓰려면 Google 계정으로 로그인해 주세요. 게시판에는 Google 이름 대신 직접 정한 참여 아이디가 보여요.',
+  signedIn: (email: string) => `${email}로 로그인됨`,
+  operatorBadge: '운영자',
+  signInError: '로그인하지 못했어요. 잠시 후 다시 시도해 주세요.',
+  notConnected: '게시판이 아직 연결되지 않아 로그인과 글쓰기를 할 수 없어요. 챌린지 시작 전에 열어 드릴게요.',
+} as const;
+
+/** 게시판이 연결되기 전(Firebase 설정값이 없을 때)에만 보여 주는 예시 글 (createdAt은 ms) */
+export const samplePosts = {
+  questions: [
+    {
+      id: 'sample-q1',
+      authorUid: 'sample',
+      authorName: '참가자 A',
+      stroke: '자유형',
+      title: '호흡할 때 물을 자꾸 먹어요',
+      body: '오른쪽으로 숨 쉴 때마다 물이 입으로 들어와요. 고개를 더 들어야 할까요?',
+      createdAt: Date.UTC(2026, 9, 27, 3),
+      answer: {
+        body: '고개를 드는 것보다 몸을 옆으로 굴리는 게 먼저예요. 한쪽 귀는 물에 대고, 입은 어깨 쪽으로 반만 돌려 보세요. 숨은 물속에서 코로 미리 내쉬어 두면 입을 열었을 때 바로 들이마실 수 있어요.',
+        answeredAt: Date.UTC(2026, 9, 27, 9),
+      },
+    },
+    {
+      id: 'sample-q2',
+      authorUid: 'sample',
+      authorName: '참가자 C',
+      stroke: '평영',
+      title: '발차기를 해도 앞으로 안 나가요',
+      body: '평영 발차기를 열심히 하는데 제자리에 있는 느낌이에요.',
+      createdAt: Date.UTC(2026, 9, 28, 1),
+    },
+  ],
+  tips: [
+    {
+      id: 'sample-t1',
+      authorUid: 'sample',
+      authorName: '참가자 B',
+      category: 'technique',
+      title: '킥판 잡고 호흡만 10분 연습',
+      body: '수업 전에 킥판을 잡고 발차기하면서 호흡만 연습했더니 자유형이 훨씬 편해졌어요.',
+      createdAt: Date.UTC(2026, 9, 26, 12),
+    },
+    {
+      id: 'sample-t2',
+      authorUid: 'sample',
+      authorName: '참가자 D',
+      category: 'gear',
+      title: '김서림 방지는 수경 안쪽을 만지지 않기',
+      body: '수경 안쪽을 손가락으로 닦으면 김서림 방지 코팅이 금방 벗겨져요. 물로 헹구기만 하세요.',
+      createdAt: Date.UTC(2026, 9, 28, 5),
+    },
+  ],
+} as const satisfies { questions: readonly Question[]; tips: readonly Tip[] };
 
 export const strokeOptions: readonly Stroke[] = ['자유형', '배영', '평영', '접영', '기타'];
 
