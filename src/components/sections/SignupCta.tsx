@@ -39,7 +39,10 @@ const inputClass =
 const labelClass = 'block font-bold text-slate-900';
 const borderFor = (error?: string) => (error ? 'border-red-600' : 'border-slate-300');
 
-/** 라디오 보기를 버튼처럼 보이는 알약 모양으로 (한 줄에 여러 개 배치해 폼 길이를 줄인다) */
+/**
+ * 라디오 보기를 버튼처럼 보이는 알약 모양으로 (한 줄에 여러 개 배치해 폼 길이를 줄인다).
+ * 선택 질문은 onClick에서 이미 고른 보기를 다시 누르면 선택을 푼다 (라디오는 원래 해제가 안 됨).
+ */
 function Pill({ children, ...input }: { children: ReactNode } & ComponentPropsWithRef<'input'>) {
   return (
     <label className="cursor-pointer rounded-full border-2 border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 has-checked:border-teal-700 has-checked:bg-teal-700 has-checked:text-white has-focus-visible:outline-3 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent">
@@ -314,6 +317,7 @@ export function SignupCta() {
                       value={key}
                       checked={values.level === key}
                       onChange={() => update('level', key)}
+                      onClick={() => values.level === key && update('level', '')}
                     >
                       {signup.levelOptions[key]}
                     </Pill>
@@ -353,6 +357,7 @@ export function SignupCta() {
                       value={key}
                       checked={values.referral === key}
                       onChange={() => update('referral', key)}
+                      onClick={() => values.referral === key && update('referral', '')}
                     >
                       {signup.referralOptions[key]}
                     </Pill>

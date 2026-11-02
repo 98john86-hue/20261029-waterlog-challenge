@@ -10,8 +10,7 @@ export function Footer() {
           {footer.contactLabel}:{' '}
           <a href={`mailto:${footer.contactEmail}`} className="text-cyan-300 underline underline-offset-4">
             {footer.contactEmail}
-          </a>{' '}
-          {footer.contactNote}
+          </a>
         </p>
         <p>{footer.safety}</p>
         <p className="text-slate-400">{footer.copyright(year)}</p>
