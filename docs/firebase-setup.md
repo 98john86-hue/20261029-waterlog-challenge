@@ -1,7 +1,7 @@
 # Firebase 연결 가이드
 
-사전 등록, 기술 Q&A, 정보 공유 게시판을 Firebase에 저장하는 방법이에요. 코드는 준비돼 있고, **설정값만 넣으면** 바로 동작해요.
-설정값이 없으면 사전 등록은 1초 뒤 "완료"만 뜨는 연습용(mock)으로, 게시판은 예시 글만 보이고 글쓰기는 막힌 채로 동작해요.
+사전 등록, 오늘의 인증(진행판), 기술 Q&A, 정보 공유 게시판을 Firebase에 저장하는 방법이에요. 코드는 준비돼 있고, **설정값만 넣으면** 바로 동작해요.
+설정값이 없으면 사전 등록은 1초 뒤 "완료"만 뜨는 연습용(mock)으로, 진행판과 게시판은 예시만 보이고 쓰기는 막힌 채로 동작해요.
 
 ## 1. Firebase 프로젝트 만들기
 1. [Firebase 콘솔](https://console.firebase.google.com)에서 **프로젝트 추가**
@@ -37,15 +37,19 @@ NEXT_PUBLIC_FIREBASE_APP_ID=1:1234567890:web:abc...
 규칙이 하는 일
 - `signups`(사전 신청): 누구나 **새로 쓰기만** 가능. 읽기·수정·삭제는 막혀 있어요 (휴대폰 번호 보호).
   이름 20자 이하, 휴대폰 형식, 이메일 형식, 동의 여부, 허용된 항목만 저장되도록 한 번 더 검사해요.
-- `participants`(챌린지 시작 후 인증 기록): 진행판은 누구나 보고, 기록은 로그인한 본인만 써요.
+- `participants`(오늘의 인증, `/challenge`): 진행판은 누구나 보고, 기록은 Google 로그인한 본인만 써요.
+  챌린지 날짜(11/9~11/27 평일, 11/30 마무리 날)에만, 그날 0시(한국 시간)가 된 뒤에만 인증할 수 있어요.
+  지난 날짜는 나중에 인증하거나 고칠 수 있어요. 참여 아이디 12자, 주간 목표 3~5회, 거리(25/50m, 1~200바퀴),
+  배운 점 200자를 한 번 더 검사해요. 운영자는 기록을 지울 수 있어요.
+  > 챌린지 날짜를 바꾸면 `src/content/landing.ts`의 `challenge`와 `firestore.rules`의 `challengeDates()`를 같이 바꾸고 규칙을 다시 게시해 주세요.
 - `questions`(기술 Q&A): 누구나 읽고, Google 로그인한 사람만 질문을 써요. 답변은 운영자만 쓰고 고쳐요.
   삭제는 쓴 사람 또는 운영자만 할 수 있어요.
 - `tips`(정보 공유): 누구나 읽고, Google 로그인한 사람만 써요. 링크는 `http://`, `https://` 주소만 받아요.
   삭제는 쓴 사람 또는 운영자만 할 수 있어요.
 - `admins`(운영자 목록): 콘솔에서만 바꿀 수 있어요. 사이트는 로그인한 본인이 운영자인지만 확인해요.
 
-## 4. Google 로그인 켜기 (기술 Q&A·정보 공유 게시판)
-게시판 글쓰기는 Google 로그인한 사람만 할 수 있어요.
+## 4. Google 로그인 켜기 (오늘의 인증, 기술 Q&A, 정보 공유)
+인증과 게시판 글쓰기는 Google 로그인한 사람만 할 수 있어요.
 1. 왼쪽 메뉴 **빌드 → Authentication → 시작하기**
 2. **로그인 방법** 탭 → **Google** → 사용 설정 → 프로젝트 지원 이메일 고르고 **저장**
 3. 사이트를 배포했다면 **Authentication → 설정 → 승인된 도메인**에 사이트 주소(예: `내사이트.netlify.app`)를 추가
@@ -65,7 +69,8 @@ NEXT_PUBLIC_FIREBASE_APP_ID=1:1234567890:web:abc...
 1. 사이트에서 사전 신청을 제출
 2. 콘솔 **Firestore → 데이터 → signups**에 문서가 생겼는지 확인
 3. 신청 목록은 이 화면에서 보거나, 필요하면 내보내기(Export)를 써요
-4. `/qna`에서 Google 로그인 → 질문을 올리면 **questions**에, `/tips`에서 글을 올리면 **tips**에 문서가 생겨요
+4. `/challenge`에서 Google 로그인 → 인증하면 **participants/{uid}** 와 그 아래 **days/{날짜}** 문서가 생겨요 (11/9부터)
+5. `/qna`에서 질문을 올리면 **questions**에, `/tips`에서 글을 올리면 **tips**에 문서가 생겨요
 
 제출이 실패하면 브라우저 개발자 도구 콘솔에 `사전 등록 저장 실패`(게시판은 `질문 저장 실패` 등)와 원인이 찍혀요.
 `permission-denied`면 보안 규칙이 게시됐는지, 입력값이 규칙에 맞는지 확인해 주세요.
@@ -89,11 +94,5 @@ Google 로그인 창이 바로 닫히고 `auth/unauthorized-domain`이 찍히면
 | `src/lib/signup.ts` | 폼이 부르는 `submitSignup`. 설정값이 있으면 Firestore, 없으면 mock |
 | `src/lib/firebase/auth.ts` | Google 로그인, 운영자(`admins/{uid}`) 확인 |
 | `src/lib/firebase/posts.ts` | 기술 Q&A·정보 공유 글 저장/불러오기/답변/삭제 |
-| `src/lib/firebase/checkins.ts` | (챌린지 시작 후) 참여자·하루 인증 저장/불러오기 뼈대. 아직 화면에 연결 안 됨 |
+| `src/lib/firebase/checkins.ts` | 오늘의 인증: 참여자·하루 인증 저장/불러오기 (`/challenge`) |
 | `firestore.rules` | 보안 규칙 |
-
-## 다음 단계: 인증·진행판 연결 (챌린지 시작 전까지)
-1. Google 로그인은 게시판에 이미 붙어 있어요 (`src/components/community/useAuth.ts`)
-2. 로그인한 사용자의 `uid`로 `saveParticipant`, `saveDay` 호출
-3. 진행판은 `loadParticipants()` 결과를 `BoardTable`의 `rows`로 넘기기
-   (`src/components/sections/WeeklyBoard.tsx`의 `myLogs` 상태와 예시 데이터를 이것으로 교체)

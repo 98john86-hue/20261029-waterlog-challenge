@@ -3,11 +3,14 @@ import {
   addDays,
   buildSampleLogs,
   formatShortDate,
+  getChallengeDates,
   getDayLogs,
+  getPeriods,
   getWeekDates,
   rankByWeek,
   replaceDayLogs,
   summarizeWeek,
+  todayInKorea,
 } from '@/lib/board';
 import type { SwimLog } from '@/lib/types';
 
@@ -82,5 +85,44 @@ describe('buildSampleLogs', () => {
     expect(summarizeWeek(logs, getWeekDates(START, 0))).toEqual({ logs: 4, days: 3 });
     expect(getDayLogs(logs, '2026-11-04').distance).toBeDefined();
     expect(getDayLogs(logs, '2026-11-04').learning).toBeDefined();
+  });
+});
+
+describe('챌린지 기간 (3주 + 마무리 날)', () => {
+  const schedule = { startDate: '2026-11-09', weeks: 3, bonusDate: '2026-11-30' };
+
+  it('주차 탭 3개 다음에 마무리 날 탭', () => {
+    const periods = getPeriods(schedule);
+    expect(periods.map((p) => (p.kind === 'week' ? p.week : 'bonus'))).toEqual([1, 2, 3, 'bonus']);
+    expect(periods[2]?.dates).toEqual(['2026-11-23', '2026-11-24', '2026-11-25', '2026-11-26', '2026-11-27']);
+    expect(periods[3]?.dates).toEqual(['2026-11-30']);
+  });
+
+  it('인증할 수 있는 날짜는 평일 15일 + 마무리 날 = 16일', () => {
+    const dates = getChallengeDates(schedule);
+    expect(dates).toHaveLength(16);
+    expect(dates[0]).toBe('2026-11-09');
+    expect(dates.at(-1)).toBe('2026-11-30');
+    expect(dates).not.toContain('2026-11-14'); // 토요일
+  });
+
+  it('마무리 날이 없으면 주차만', () => {
+    expect(getPeriods({ startDate: '2026-11-09', weeks: 2 })).toHaveLength(2);
+  });
+
+  it('오늘 날짜는 한국 시간 기준', () => {
+    // UTC 11/8 15:00 = 한국 11/9 0:00
+    expect(todayInKorea(Date.UTC(2026, 10, 8, 15))).toBe('2026-11-09');
+    expect(todayInKorea(Date.UTC(2026, 10, 8, 14, 59))).toBe('2026-11-08');
+  });
+
+  it('마무리 날처럼 목표가 없는 기간은 목표 달성으로 먼저 올리지 않는다', () => {
+    const bonus = ['2026-11-30'];
+    const rows = [
+      { id: 'goalLow', goal: 1, logs: [dist('2026-11-30')] },
+      { id: 'more', goal: 5, logs: [dist('2026-11-30'), learn('2026-11-30')] },
+    ];
+    expect(rankByWeek(rows, bonus).map((r) => r.id)).toEqual(['goalLow', 'more']);
+    expect(rankByWeek(rows, bonus, false).map((r) => r.id)).toEqual(['more', 'goalLow']);
   });
 });

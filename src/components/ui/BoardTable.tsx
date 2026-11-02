@@ -1,8 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { board, challenge } from '@/content/landing';
-import { formatShortDate, getDayLogs, getWeekDates, rankByWeek, summarizeWeek, type DayLogs } from '@/lib/board';
+import { board, challenge, weekdays } from '@/content/landing';
+import { formatShortDate, getDayLogs, getPeriods, rankByWeek, summarizeWeek, type DayLogs } from '@/lib/board';
 import { formatMeters, getTotalDistance } from '@/lib/distance';
 import type { SwimLog } from '@/lib/types';
 import { Badge } from '@/components/ui/Badge';
@@ -11,8 +11,24 @@ export type BoardRow = { id: string; name: string; isMe: boolean; goal: number; 
 
 type BoardTableProps = {
   rows: readonly BoardRow[];
-  weekIndex: number;
-  onWeekChange: (week: number) => void;
+  /** 몇 번째 탭인지 (1~3주차, 마무리 날 순서) */
+  periodIndex: number;
+  onPeriodChange: (index: number) => void;
+  /** 예시 데이터면 표 위에 '예시 데이터' 표시 */
+  sample?: boolean;
+};
+
+export const boardPeriods = getPeriods(challenge);
+
+const periodLabel = (index: number) => {
+  const period = boardPeriods[index];
+  return period?.kind === 'week' ? board.weekLabel(period.week) : board.bonusLabel;
+};
+
+/** 'YYYY-MM-DD'의 요일 한 글자 */
+const weekdayOf = (date: string) => {
+  const [y = 0, m = 1, d = 1] = date.split('-').map(Number);
+  return weekdays[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
 };
 
 // 글자 크기 단계: 표 전체 글자 크기와 칸 너비를 함께 키운다
@@ -46,12 +62,14 @@ function DayCell({ day, clamp }: { day: DayLogs; clamp: string }) {
   );
 }
 
-/** 전체 진행판: 가로 월~금, 세로 참여자. 그 주에 기록이 많은 순으로 정렬 */
-export function BoardTable({ rows, weekIndex, onWeekChange }: BoardTableProps) {
+/** 전체 진행판: 가로 월~금(마무리 날은 하루), 세로 참여자. 그 주에 기록이 많은 순으로 정렬 */
+export function BoardTable({ rows, periodIndex, onPeriodChange, sample = false }: BoardTableProps) {
   // 모바일에서 월~금이 더 많이 보이도록 기본은 작은 글자
   const [zoom, setZoom] = useState(0);
-  const dates = useMemo(() => getWeekDates(challenge.startDate, weekIndex), [weekIndex]);
-  const ranked = useMemo(() => rankByWeek(rows, dates), [rows, dates]);
+  const period = boardPeriods[periodIndex] ?? boardPeriods[0];
+  const dates = useMemo(() => period?.dates ?? [], [period]);
+  const isWeek = period?.kind === 'week';
+  const ranked = useMemo(() => rankByWeek(rows, dates, isWeek), [rows, dates, isWeek]);
   const style = zoomStyles[zoom] ?? zoomStyles[1];
 
   return (
@@ -59,24 +77,26 @@ export function BoardTable({ rows, weekIndex, onWeekChange }: BoardTableProps) {
       <div className="px-4 text-center">
         <h3 className="text-xl font-extrabold text-slate-900 sm:text-2xl">{board.boardTitle}</h3>
         <p className="mt-2 text-sm text-slate-600">{board.boardDescription}</p>
-        <div className="mt-2 flex justify-center">
-          <Badge tone="sample">{board.sampleNotice}</Badge>
-        </div>
+        {sample ? (
+          <div className="mt-2 flex justify-center">
+            <Badge tone="sample">{board.sampleNotice}</Badge>
+          </div>
+        ) : null}
       </div>
 
       <div className="mt-5 flex flex-col gap-3 px-4 sm:flex-row sm:items-center sm:justify-between">
         <div role="group" aria-label={board.weekTabsLabel} className="grid grid-cols-4 gap-1 rounded-2xl bg-white p-1 shadow-sm">
-          {Array.from({ length: challenge.weeks }, (_, i) => (
+          {boardPeriods.map((_, i) => (
             <button
               key={i}
               type="button"
-              aria-pressed={i === weekIndex}
-              onClick={() => onWeekChange(i)}
+              aria-pressed={i === periodIndex}
+              onClick={() => onPeriodChange(i)}
               className={`rounded-xl px-3 py-2 text-sm font-bold ${
-                i === weekIndex ? 'bg-teal-700 text-white' : 'text-slate-600 hover:bg-slate-100'
+                i === periodIndex ? 'bg-teal-700 text-white' : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              {board.weekLabel(i + 1)}
+              {periodLabel(i)}
             </button>
           ))}
         </div>
@@ -100,12 +120,17 @@ export function BoardTable({ rows, weekIndex, onWeekChange }: BoardTableProps) {
         </div>
       </div>
       <p className="mt-2 px-4 text-xs text-slate-600">
-        {formatShortDate(dates[0] ?? '')}~{formatShortDate(dates[4] ?? '')} · {board.goalHint}
+        {isWeek
+          ? `${formatShortDate(dates[0] ?? '')}~${formatShortDate(dates.at(-1) ?? '')} · ${board.goalHint}`
+          : `${formatShortDate(dates[0] ?? '')} · ${board.bonusHint}`}
       </p>
 
       <div className="relative mx-4 mt-3 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <table className={`w-full table-fixed border-collapse ${style.text} ${style.table}`}>
-          <caption className="sr-only">{board.tableCaption(weekIndex + 1)}</caption>
+        {/* 마무리 날은 한 칸뿐이라 최소 너비 없이 화면에 맞춘다 */}
+        <table className={`w-full table-fixed border-collapse ${style.text} ${isWeek ? style.table : ''}`}>
+          <caption className="sr-only">
+            {period?.kind === 'week' ? board.tableCaption(period.week) : board.bonusCaption}
+          </caption>
           <colgroup>
             <col className="w-[7.5em]" />
             {dates.map((date) => (
@@ -117,9 +142,9 @@ export function BoardTable({ rows, weekIndex, onWeekChange }: BoardTableProps) {
               <th scope="col" className="sticky left-0 z-10 bg-slate-50 px-3 py-2.5 text-left font-bold text-slate-700">
                 {board.participantHeader}
               </th>
-              {dates.map((date, i) => (
+              {dates.map((date) => (
                 <th key={date} scope="col" className="px-2 py-2.5 text-left font-bold text-slate-700">
-                  {board.weekdayHeaders[i]} <span className="font-medium text-slate-500">{formatShortDate(date)}</span>
+                  {weekdayOf(date)} <span className="font-medium text-slate-500">{formatShortDate(date)}</span>
                 </th>
               ))}
             </tr>
@@ -135,20 +160,22 @@ export function BoardTable({ rows, weekIndex, onWeekChange }: BoardTableProps) {
                   >
                     <span className="block font-bold break-all text-slate-900">
                       {row.name}
-                      {row.isMe && row.name !== board.meName ? (
-                        <span className="ml-1 font-medium text-amber-800">({board.meTag})</span>
-                      ) : null}
+                      {row.isMe ? <span className="ml-1 font-medium text-amber-800">({board.meTag})</span> : null}
                     </span>
-                    <span className="mt-1 flex flex-wrap items-center gap-1">
-                      <span className="text-slate-600" aria-label={board.goalProgressLabel(summary.days, row.goal)}>
-                        {board.weeklyCount(summary.days, row.goal)}
-                      </span>
-                      {summary.days >= row.goal ? (
-                        <span role="img" aria-label={board.goalMetLabel} className="text-lg leading-none">
-                          {board.goalMedal}
+                    {isWeek ? (
+                      <span className="mt-1 flex flex-wrap items-center gap-1">
+                        <span className="text-slate-600" aria-label={board.goalProgressLabel(summary.days, row.goal)}>
+                          {board.weeklyCount(summary.days, row.goal)}
                         </span>
-                      ) : null}
-                    </span>
+                        {summary.days >= row.goal ? (
+                          <span role="img" aria-label={board.goalMetLabel} className="text-lg leading-none">
+                            {board.goalMedal}
+                          </span>
+                        ) : null}
+                      </span>
+                    ) : summary.days > 0 ? (
+                      <span className="mt-1 block font-bold text-emerald-800">{board.bonusDone}</span>
+                    ) : null}
                   </th>
                   {dates.map((date) => (
                     <td key={date} className="px-2 py-3 align-top leading-snug">
@@ -161,7 +188,7 @@ export function BoardTable({ rows, weekIndex, onWeekChange }: BoardTableProps) {
           </tbody>
         </table>
       </div>
-      <p className="mt-2 px-4 text-xs text-slate-600">{board.zoomHint}</p>
+      {isWeek ? <p className="mt-2 px-4 text-xs text-slate-600">{board.zoomHint}</p> : null}
     </div>
   );
 }

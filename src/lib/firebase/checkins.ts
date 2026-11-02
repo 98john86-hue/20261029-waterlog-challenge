@@ -1,7 +1,6 @@
 /**
- * [챌린지 시작 후 사용할 뼈대] 오늘의 인증·진행판 저장.
- * 아직 화면(WeeklyBoard)에는 연결하지 않았다. 로그인(Firebase Authentication)을 붙인 뒤
- * WeeklyBoard의 myLogs 상태 대신 아래 함수들을 쓰면 된다.
+ * 오늘의 인증·진행판 저장 (/challenge 페이지의 ChallengeBoard에서 쓴다).
+ * 쓰기는 Google 로그인한 본인 uid로만 할 수 있다 (firestore.rules).
  *
  * 데이터 구조
  *   participants/{uid}               { name, goal, updatedAt }

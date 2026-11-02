@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/Badge';
 import type { AuthControls } from '@/components/community/useAuth';
 
 /** 글쓰기 폼 위: 로그인 안내/버튼, 또는 로그인한 계정과 로그아웃 */
-export function AuthPanel({ controls }: { controls: AuthControls }) {
+export function AuthPanel({ controls, prompt = copy.signInPrompt }: { controls: AuthControls; prompt?: string }) {
   const { connected, state, user, error } = controls;
 
   return (
@@ -31,7 +31,7 @@ export function AuthPanel({ controls }: { controls: AuthControls }) {
         </div>
       ) : (
         <>
-          <p className="text-slate-700">{copy.signInPrompt}</p>
+          <p className="text-slate-700">{prompt}</p>
           <button type="button" onClick={controls.signIn} className={buttonStyles('outline', 'sm')}>
             <GoogleMark />
             {copy.signIn}

@@ -4,9 +4,9 @@ import type { Level, Question, ReferralSource, Stroke, SwimFrequency, Tip, TipCa
 
 export const site = {
   name: '나만의 워터로그 챌린지',
-  title: '나만의 워터로그 챌린지 | 한 달, 매일 한 줄씩 쌓이는 나의 수영',
+  title: '나만의 워터로그 챌린지 | 3주, 매일 한 줄씩 쌓이는 나의 수영',
   description:
-    '한 달(4주) 동안 평일 주 3~5회, 수영 거리나 배운 점을 기록하는 챌린지. 많이 못 헤엄친 날도 배운 점 한 줄이면 성공이에요. 지금 사전 등록하세요.',
+    '11월 9일부터 3주 동안 평일 주 3~5회, 수영 거리나 배운 점을 기록하는 챌린지. 많이 못 헤엄친 날도 배운 점 한 줄이면 성공이에요. 지금 사전 등록하세요.',
   ogDescription: '거리 또는 배운 점, 하나만 기록하면 오늘도 성공. 나만의 워터로그 챌린지 사전 등록 중.',
   locale: 'ko_KR',
 } as const;
@@ -16,7 +16,7 @@ export const header = {
   // 다른 페이지(Q&A, 정보 공유)에서도 홈 섹션으로 갈 수 있게 '/#...' 형태로 쓴다
   nav: [
     { href: '/#how', label: '참여 방법' },
-    { href: '/#board', label: '인증·진행판' },
+    { href: '/challenge', label: '오늘의 인증' },
     { href: '/qna', label: '기술 Q&A' },
     { href: '/tips', label: '정보 공유' },
     { href: '/#faq', label: 'FAQ' },
@@ -27,9 +27,9 @@ export const header = {
 
 export const hero = {
   eyebrow: '사전 등록 중',
-  headlineLines: ['한 달, 매일 한 줄씩', '쌓이는 나의 수영'],
+  headlineLines: ['3주, 매일 한 줄씩', '쌓이는 나의 수영'],
   subcopy: '오늘 익힌 기술은 한 줄로 남기고, 내일 물속에서 다시 꺼내 써요.',
-  body: '거리 또는 기술, 하나만 기록해도 인증 완료. 4주 동안 평일 주 3~5회, 주말은 쉬어요.',
+  body: '거리 또는 기술, 하나만 기록해도 인증 완료. 11월 9일부터 3주 동안 평일 주 3~5회, 주말은 쉬어요. 11월 30일은 마무리 날이에요.',
   primaryCta: '챌린지 사전 등록하기',
 } as const;
 
@@ -43,7 +43,7 @@ export const howItWorks = {
       description: '거리나 습득한 기술, 하나만 남겨도 인증돼요.',
       examples: ['거리: 25m × 6바퀴 = 300m', '기술: 자유형 팔은 옆으로 돌린다'],
     },
-    { title: '4주 완주', description: '한 달의 기록이 나만의 수영 노트가 돼요.' },
+    { title: '3주 완주 + 마무리 날', description: '11월 30일 마무리 날까지, 3주의 기록이 나만의 수영 노트가 돼요.' },
   ],
   lapNote: '1바퀴는 왕복 기준(25m 레인 = 50m)이에요.',
 } as const;
@@ -51,10 +51,15 @@ export const howItWorks = {
 export const levelOrder: readonly Level[] = ['beginner', 'intermediate', 'advanced'];
 
 
-/** 챌린지 일정 (예시 일정: 시작일은 1주차 월요일) */
+/**
+ * 챌린지 일정: 11/9(월)~11/27(금) 3주 + 11/30(월) 마무리 날.
+ * 시작일은 1주차 월요일. 마무리 날은 인증은 받지만 주간 목표에는 넣지 않는다.
+ * 날짜를 바꾸면 firestore.rules의 challengeDates()도 같이 바꾼다.
+ */
 export const challenge = {
-  startDate: '2026-11-02',
-  weeks: 4,
+  startDate: '2026-11-09',
+  weeks: 3,
+  bonusDate: '2026-11-30',
   weeklyMin: 3,
   weeklyMax: 5,
 } as const;
@@ -64,20 +69,35 @@ export type SampleParticipant = {
   name: string;
   /** 참여자가 정한 주간 목표 인증 횟수 (3~5) */
   goal: number;
-  /** 주차별 월~금 기록 패턴. D=거리, L=배운 점, B=둘 다, -=없음 */
+  /** 주차별 월~금 기록 패턴. D=거리, L=배운 점, B=둘 다, -=없음. 마지막 한 글자는 마무리 날 */
   weeks: readonly string[];
 };
 
 export const board = {
+  pageTitle: '오늘의 인증 | 나만의 워터로그 챌린지',
+  pageDescription: '수영하고 거리나 배운 점을 인증하고, 모든 참여자의 진행판을 확인해요.',
   eyebrow: '오늘의 인증',
   title: '수영하고, 바로 인증해요',
-  description: '평일(월~금) 23:59까지 인증해요. 예전 날짜를 골라 이미 낸 인증도 고칠 수 있어요.',
-  sampleBadge: '체험용',
+  description: '평일(월~금)에 수영하고 인증해요. 깜빡했다면 지난 날짜를 골라 나중에 인증하거나 고칠 수 있어요.',
+  signInPrompt: '인증하려면 Google 계정으로 로그인해 주세요. 진행판에는 Google 이름 대신 직접 정한 참여 아이디가 보여요.',
+  notOpenYet: (date: string) => `${date}부터 인증할 수 있어요. 그날 다시 만나요!`,
+  loading: '진행판을 불러오는 중…',
+  loadError: '진행판을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+  emptyBoard: '아직 인증한 참여자가 없어요. 첫 인증을 남겨 보세요!',
+  // 홈의 진행판 미리보기
+  preview: {
+    eyebrow: '진행판 미리보기',
+    title: '이렇게 함께 기록해요',
+    description: '참여자는 매일 인증하고, 모두의 기록이 한 표에 모여요. 아래는 예시예요.',
+    cta: '오늘의 인증 하러 가기',
+  },
   form: {
     dateLabel: '인증할 날짜',
     dateOption: (week: number, date: string) => `${week}주차 · ${date}`,
+    bonusOption: (date: string) => `마무리 날 · ${date}`,
     nameLabel: '참여 아이디',
-    nameHint: '진행판에 보일 이름이에요. 비워 두면 “나”로 보여요.',
+    nameHint: '진행판에 보일 이름이에요. 12자까지 쓸 수 있어요.',
+    nameRequired: '참여 아이디를 입력해 주세요.',
     namePlaceholder: '예: 물개',
     goalLabel: '나의 주간 목표',
     goalHint: '한 주에 몇 번 인증할지 정해요. 채우면 진행판에 🏅가 붙어요.',
@@ -95,19 +115,23 @@ export const board = {
     update: '인증 수정하기',
     remove: '이 날 인증 지우기',
     emptyError: '거리(바퀴 수)나 습득한 기술 중 하나는 적어 주세요.',
+    lapsTooMany: '바퀴 수는 200 이하로 적어 주세요.',
     success: (date: string) => `${date} 인증 완료! 아래 진행판에 반영됐어요.`,
     removed: (date: string) => `${date} 인증을 지웠어요.`,
-    notSaved: '체험용이라 입력한 기록은 저장되지 않아요.',
+    saving: '저장하는 중…',
+    saveError: '저장하지 못했어요. 잠시 후 다시 시도해 주세요.',
   },
   boardTitle: '전체 진행판',
-  boardDescription: '주간 목표를 달성한 참여자부터, 기록이 많은 순으로 보여요. 다른 참여자 이름과 기록은 예시예요.',
+  boardDescription: '주간 목표를 달성한 참여자부터, 기록이 많은 순으로 보여요.',
   sampleNotice: '예시 데이터',
   weekTabsLabel: '주차 선택',
   weekLabel: (n: number) => `${n}주차`,
+  bonusLabel: '마무리',
   tableCaption: (n: number) => `${n}주차 참여자별 인증 기록 (월~금, 목표 달성자와 기록이 많은 순)`,
+  bonusCaption: '마무리 날 참여자별 인증 기록',
+  bonusHint: '마무리 날은 주간 목표에 들어가지 않아요. 3주를 돌아보며 한 번 더 기록해요.',
+  bonusDone: '인증',
   participantHeader: '참여자',
-  weekdayHeaders: ['월', '화', '수', '목', '금'],
-  meName: '나',
   meTag: '나',
   weeklyCount: (count: number, goal: number) => `${count}/${goal}회`,
   goalMedal: '🏅',
@@ -140,11 +164,11 @@ export const board = {
     ] as const satisfies ReadonlyArray<{ stroke: Stroke; note: string }>,
   },
   participants: [
-    { id: 'a', name: '참가자 A', goal: 4, weeks: ['DLB-L', 'BLD-B', 'D-L-D', 'LB---'] },
-    { id: 'b', name: '참가자 B', goal: 5, weeks: ['BBDBL', 'BDBLB', 'DBBDL', 'BB---'] },
-    { id: 'c', name: '참가자 C', goal: 3, weeks: ['L-L-D', '-L-D-', 'LD-L-', 'L----'] },
-    { id: 'd', name: '참가자 D', goal: 4, weeks: ['D-D-D', 'DDL-D', 'B-D-D', 'D-D--'] },
-    { id: 'e', name: '참가자 E', goal: 3, weeks: ['-L---', 'L-L-L', '-BL-B', '-L---'] },
+    { id: 'a', name: '참가자 A', goal: 4, weeks: ['DLB-L', 'BLD-B', 'D-L-D', 'L'] },
+    { id: 'b', name: '참가자 B', goal: 5, weeks: ['BBDBL', 'BDBLB', 'DBBDL', 'B'] },
+    { id: 'c', name: '참가자 C', goal: 3, weeks: ['L-L-D', '-L-D-', 'LD-L-', 'L'] },
+    { id: 'd', name: '참가자 D', goal: 4, weeks: ['D-D-D', 'DDL-D', 'B-D-D', 'D'] },
+    { id: 'e', name: '참가자 E', goal: 3, weeks: ['-L---', 'L-L-L', '-BL-B', '-'] },
   ] as const satisfies ReadonlyArray<SampleParticipant>,
 } as const;
 
@@ -167,6 +191,11 @@ export const faq = {
       question: '하루를 놓치면 어떻게 되나요?',
       answer:
         '괜찮아요. 평일(월~금) 중 주 3~5회만 인증하면 그 주는 성공이에요. 주말은 쉬고, 하루 놓쳐도 같은 주의 다른 평일에 채우면 돼요.',
+    },
+    {
+      question: '11월 30일 마무리 날은 뭐예요?',
+      answer:
+        '3주(11/9~11/27)를 마친 뒤 한 번 더 수영하고 기록을 남기는 날이에요. 주간 목표에는 들어가지 않으니 부담 없이 3주를 돌아보며 인증해 주세요.',
     },
     {
       question: '다른 참여자가 제 기록을 볼 수 있나요?',
@@ -210,7 +239,7 @@ export const signup = {
     intermediate: '중급',
     advanced: '상급',
   } satisfies Record<Level, string>,
-  goalLabel: '이번 한 달 동안 가장 바꾸고 싶은 건 뭐예요?',
+  goalLabel: '이번 챌린지 동안 가장 바꾸고 싶은 건 뭐예요?',
   goalPlaceholder: '예: 자유형 호흡이 편해졌으면 좋겠어요',
   referralLabel: '어디서 보고 오셨어요?',
   referralOptions: {
