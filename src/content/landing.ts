@@ -200,7 +200,7 @@ export const faq = {
     {
       question: '다른 참여자가 제 기록을 볼 수 있나요?',
       answer:
-        '네. 서로 자극을 주고받을 수 있도록 진행판에 참여 아이디와 기록이 함께 보여요. 공개 범위 등 세부 정책은 시작 전 안내드릴게요. (플레이스홀더 답변)',
+        '네. 서로 자극을 주고받을 수 있도록 참여 아이디와 기록(거리, 배운 점)이 진행판에서 모든 참여자에게 공개돼요. 이름이나 연락처 대신 직접 정한 참여 아이디만 보이니, 개인정보가 드러나지 않는 아이디를 써 주세요.',
     },
     {
       question: '비용이 드나요?',
@@ -444,8 +444,7 @@ export const strokeOptions: readonly Stroke[] = ['자유형', '배영', '평영'
 
 export const footer = {
   contactLabel: '문의',
-  contactEmail: 'hello@example.com',
-  contactNote: '(플레이스홀더)',
+  contactEmail: 'quert12@naver.com',
   safety: '수영 전 건강 상태를 확인하고, 안전요원이 있는 곳에서 무리하지 않고 수영해 주세요.',
   copyright: (year: number) => `© ${year} 나만의 워터로그 챌린지. All rights reserved.`,
 } as const;
