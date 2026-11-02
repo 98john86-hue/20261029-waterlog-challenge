@@ -1,0 +1,11 @@
+# Netlify 배포 설정. 넷리파이 화면(Build settings)의 값보다 이 파일이 우선해요.
+# Next.js 사이트라 넷리파이가 Next.js 런타임을 자동으로 붙여서 /challenge, /qna, /tips 같은 페이지를 실행해요.
+# Firebase 설정값은 저장소의 .env.production에서 빌드할 때 읽어요 (환경 변수를 따로 넣지 않아도 돼요).
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  # Next.js 16은 Node.js 20.9 이상이 필요해요
+  NODE_VERSION = "22"
