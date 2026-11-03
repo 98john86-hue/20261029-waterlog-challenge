@@ -4,10 +4,25 @@ import { useMemo, useState } from 'react';
 import { board, challenge, weekdays } from '@/content/landing';
 import { formatShortDate, getDayLogs, getPeriods, rankByWeek, summarizeWeek, type DayLogs } from '@/lib/board';
 import { formatMeters, getTotalDistance } from '@/lib/distance';
+import { recordKey, type CheerSummary, type HostComment } from '@/lib/feedback';
 import type { SwimLog } from '@/lib/types';
 import { Badge } from '@/components/ui/Badge';
 
 export type BoardRow = { id: string; name: string; isMe: boolean; goal: number; logs: readonly SwimLog[] };
+
+/** 기록마다 붙는 소통 (실제 진행판에서만. 미리보기·예시에는 없다) */
+export type BoardFeedback = {
+  /** recordKey(uid, date) → 운영자 한마디 */
+  comments: ReadonlyMap<string, HostComment>;
+  /** 아직 확인하지 않은 내 기록의 한마디 */
+  newCommentKeys: ReadonlySet<string>;
+  /** recordKey(uid, date) → 응원 수 */
+  cheers: ReadonlyMap<string, CheerSummary>;
+  /** 로그인했을 때만: 남의 기록에 응원 켜기/끄기 */
+  onToggleCheer?: (row: BoardRow, date: string) => void;
+  /** 운영자일 때만: 한마디 쓰기 */
+  onComment?: (row: BoardRow, date: string) => void;
+};
 
 type BoardTableProps = {
   rows: readonly BoardRow[];
@@ -16,7 +31,27 @@ type BoardTableProps = {
   onPeriodChange: (index: number) => void;
   /** 예시 데이터면 표 위에 '예시 데이터' 표시 */
   sample?: boolean;
+  feedback?: BoardFeedback;
 };
+
+/** n주차(1부터)의 목표 달성 메달 */
+const medalFor = (week: number) => board.medals.find((m) => m.week === week);
+
+function Medal({ week, size }: { week: number; size: 'sm' | 'lg' }) {
+  const medal = medalFor(week);
+  if (!medal) return null;
+  const px = size === 'sm' ? 32 : 56;
+  return (
+    // 작은 정적 이미지라 next/image 대신 img (public/medals)
+    <img
+      src={medal.src}
+      alt={board.medalAlt(week, medal.name)}
+      width={px}
+      height={px}
+      className={`${size === 'sm' ? 'size-8' : 'size-14'} shrink-0 drop-shadow-sm`}
+    />
+  );
+}
 
 export const boardPeriods = getPeriods(challenge);
 
@@ -62,8 +97,63 @@ function DayCell({ day, clamp }: { day: DayLogs; clamp: string }) {
   );
 }
 
+const smallButton = 'rounded-full border px-1.5 py-0.5 font-bold leading-none';
+
+/** 기록 아래: 운영자 한마디, 응원(👏), 운영자에게만 보이는 한마디 버튼 */
+function CellFeedback({ row, date, feedback }: { row: BoardRow; date: string; feedback: BoardFeedback }) {
+  const key = recordKey(row.id, date);
+  const comment = feedback.comments.get(key);
+  const cheer = feedback.cheers.get(key) ?? { count: 0, mine: false };
+  const canCheer = Boolean(feedback.onToggleCheer) && !row.isMe;
+
+  return (
+    <span className="mt-1.5 flex flex-col gap-1.5">
+      {comment ? (
+        <span className="rounded-lg border-l-2 border-teal-600 bg-teal-50 px-1.5 py-1 text-slate-800">
+          <strong className="block font-bold text-teal-900">
+            💬 {board.hostComment}
+            {feedback.newCommentKeys.has(key) ? (
+              <span className="ml-1 rounded-full bg-amber-200 px-1.5 text-amber-900">{board.newTag}</span>
+            ) : null}
+          </strong>
+          <span className="whitespace-pre-line">{comment.body}</span>
+        </span>
+      ) : null}
+      <span className="flex flex-wrap items-center gap-1">
+        {canCheer ? (
+          <button
+            type="button"
+            aria-pressed={cheer.mine}
+            aria-label={board.cheerLabel(cheer.count, cheer.mine)}
+            onClick={() => feedback.onToggleCheer?.(row, date)}
+            className={`${smallButton} ${
+              cheer.mine ? 'border-amber-500 bg-amber-100 text-amber-900' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            {board.cheer}
+            {cheer.count > 0 ? ` ${cheer.count}` : ''}
+          </button>
+        ) : cheer.count > 0 ? (
+          <span className="font-bold text-amber-800" aria-label={board.cheerCount(cheer.count)}>
+            {board.cheer} {cheer.count}
+          </span>
+        ) : null}
+        {feedback.onComment ? (
+          <button
+            type="button"
+            onClick={() => feedback.onComment?.(row, date)}
+            className={`${smallButton} border-teal-600 bg-white text-teal-800 hover:bg-teal-50`}
+          >
+            {comment ? board.commentEditButton : board.commentButton}
+          </button>
+        ) : null}
+      </span>
+    </span>
+  );
+}
+
 /** 전체 진행판: 가로 월~금(마무리 날은 하루), 세로 참여자. 그 주에 기록이 많은 순으로 정렬 */
-export function BoardTable({ rows, periodIndex, onPeriodChange, sample = false }: BoardTableProps) {
+export function BoardTable({ rows, periodIndex, onPeriodChange, sample = false, feedback }: BoardTableProps) {
   // 모바일에서 월~금이 더 많이 보이도록 기본은 작은 글자
   const [zoom, setZoom] = useState(0);
   const period = boardPeriods[periodIndex] ?? boardPeriods[0];
@@ -82,6 +172,17 @@ export function BoardTable({ rows, periodIndex, onPeriodChange, sample = false }
             <Badge tone="sample">{board.sampleNotice}</Badge>
           </div>
         ) : null}
+        <div className="mt-4">
+          <p className="text-sm font-bold text-slate-700">{board.medalsTitle}</p>
+          <ul className="mt-2 flex justify-center gap-5">
+            {board.medals.map((medal) => (
+              <li key={medal.week} className="flex flex-col items-center gap-1 text-xs font-bold text-slate-700">
+                <Medal week={medal.week} size="lg" />
+                {board.weekLabel(medal.week)}
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
 
       <div className="mt-5 flex flex-col gap-3 px-4 sm:flex-row sm:items-center sm:justify-between">
@@ -167,21 +268,23 @@ export function BoardTable({ rows, periodIndex, onPeriodChange, sample = false }
                         <span className="text-slate-600" aria-label={board.goalProgressLabel(summary.days, row.goal)}>
                           {board.weeklyCount(summary.days, row.goal)}
                         </span>
-                        {summary.days >= row.goal ? (
-                          <span role="img" aria-label={board.goalMetLabel} className="text-lg leading-none">
-                            {board.goalMedal}
-                          </span>
-                        ) : null}
+                        {summary.days >= row.goal && period?.kind === 'week' ? <Medal week={period.week} size="sm" /> : null}
                       </span>
                     ) : summary.days > 0 ? (
                       <span className="mt-1 block font-bold text-emerald-800">{board.bonusDone}</span>
                     ) : null}
                   </th>
-                  {dates.map((date) => (
-                    <td key={date} className="px-2 py-3 align-top leading-snug">
-                      <DayCell day={getDayLogs(row.logs, date)} clamp={style.clamp} />
-                    </td>
-                  ))}
+                  {dates.map((date) => {
+                    const day = getDayLogs(row.logs, date);
+                    return (
+                      <td key={date} className="px-2 py-3 align-top leading-snug">
+                        <DayCell day={day} clamp={style.clamp} />
+                        {feedback && (day.distance || day.learning) ? (
+                          <CellFeedback row={row} date={date} feedback={feedback} />
+                        ) : null}
+                      </td>
+                    );
+                  })}
                 </tr>
               );
             })}

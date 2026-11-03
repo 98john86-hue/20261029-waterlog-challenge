@@ -10,6 +10,9 @@ import { buttonStyles } from '@/components/ui/Button';
 
 export type DateOption = { date: string; label: string };
 
+/** 질문을 함께 보냈는지: 'none' 질문 없음, 'sent' 보냄, 'failed' 인증만 저장되고 질문은 실패 */
+export type CheckInSaveResult = { question: 'none' | 'sent' | 'failed' };
+
 type CheckInFormProps = {
   /** 인증할 수 있는 날짜 (비어 있지 않아야 한다) */
   dateOptions: readonly DateOption[];
@@ -20,8 +23,11 @@ type CheckInFormProps = {
   onNameChange: (name: string) => void;
   goal: number;
   onGoalChange: (goal: number) => void;
-  /** 빈 DayLogs면 그날 인증을 지운다. 실패하면 throw */
-  onSave: (date: string, next: DayLogs) => Promise<void>;
+  /**
+   * 빈 DayLogs면 그날 인증을 지운다. 인증 저장에 실패하면 throw.
+   * question이 있으면 Q&A 질문으로도 올리고, 그 결과를 돌려준다 (질문이 실패해도 인증은 저장된 상태).
+   */
+  onSave: (date: string, next: DayLogs, question: string) => Promise<CheckInSaveResult>;
 };
 
 const copy = board.form;
@@ -29,6 +35,7 @@ const copy = board.form;
 export const NAME_MAX = 12;
 export const LAPS_MAX = 200;
 export const NOTE_MAX = 200;
+export const QUESTION_MAX = 500;
 
 const labelClass = 'block font-bold text-slate-900';
 const hintClass = 'mt-0.5 text-sm text-slate-600';
@@ -52,6 +59,7 @@ export function CheckInForm({ dateOptions, initialDate, myLogs, name, onNameChan
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
+  const [question, setQuestion] = useState('');
 
   const existing = getDayLogs(myLogs, date);
   const hasExisting = Boolean(existing.distance || existing.learning);
@@ -73,13 +81,19 @@ export function CheckInForm({ dateOptions, initialDate, myLogs, name, onNameChan
   const trimmedNote = note.trim();
 
   /** 저장하고 결과 문구를 보여 준다. 실패하면 안내 문구를 보여 주고 false */
-  const save = async (next: DayLogs, done: string): Promise<boolean> => {
+  const save = async (next: DayLogs, done: string, questionText = ''): Promise<boolean> => {
     setSaving(true);
     setError('');
     setMessage('');
     try {
-      await onSave(date, next);
-      setMessage(done);
+      const result = await onSave(date, next, questionText);
+      if (result.question === 'sent') {
+        setQuestion('');
+        setMessage(`${done} ${copy.questionSent}`);
+      } else {
+        setMessage(done);
+        if (result.question === 'failed') setError(copy.questionFailed);
+      }
       return true;
     } catch (e) {
       console.error('인증 저장 실패', e);
@@ -111,6 +125,7 @@ export function CheckInForm({ dateOptions, initialDate, myLogs, name, onNameChan
         ...(trimmedNote ? { learning: { type: 'learning', date, stroke, note: trimmedNote } } : {}),
       },
       copy.success(formatLogDate(date)),
+      question.trim(),
     );
   };
 
@@ -265,6 +280,25 @@ export function CheckInForm({ dateOptions, initialDate, myLogs, name, onNameChan
           className={`${fieldClass} resize-none`}
         />
       </fieldset>
+
+      <div>
+        <label htmlFor="checkin-question" className={labelClass}>
+          {copy.questionLabel}
+        </label>
+        <p id="checkin-question-hint" className={hintClass}>
+          {copy.questionHint}
+        </p>
+        <textarea
+          id="checkin-question"
+          rows={3}
+          maxLength={QUESTION_MAX}
+          value={question}
+          placeholder={copy.questionPlaceholder}
+          onChange={(e) => setQuestion(e.target.value)}
+          aria-describedby="checkin-question-hint"
+          className={`${fieldClass} resize-none`}
+        />
+      </div>
 
       <div className="flex flex-col gap-3">
         <p className="text-sm text-slate-600">{copy.oneIsEnough}</p>

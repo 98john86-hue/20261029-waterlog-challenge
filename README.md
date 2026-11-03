@@ -6,6 +6,9 @@
 
 - `/` 랜딩 페이지 (소개, 진행판 미리보기, 사전 등록)
 - `/challenge` 오늘의 인증: Google 로그인 후 매일 인증, 모든 참여자의 진행판
+  - 인증하면서 운영자에게 궁금한 점을 남기면 기술 Q&A 질문으로 올라감
+  - 기록마다 운영자 한마디(💬)와 참여자 응원(👏), 주간 목표 달성 메달(1주차 돌고래, 2주차 수달, 3주차 고래)
+  - 내 질문에 답변이나 내 기록에 한마디가 달리면 '새 소식'으로 알려 줌
 - `/qna` 수영 기술 Q&A: 참여자가 질문하고 운영자가 답변
 - `/tips` 수영 정보 공유 게시판: 참여자끼리 팁·용품·수영장 정보 공유
 - 인증과 게시판 글쓰기는 Google 로그인한 사람만, 답변은 운영자만 (Firebase Authentication + Firestore)
@@ -35,18 +38,21 @@ src/
     signup.ts          submitSignup — Firebase 설정이 있으면 Firestore 저장, 없으면 mock
     posts.ts           게시판 글 검증·정리·정렬, Firestore 문서 → 글 변환
     community.ts       게시판 연결 여부, 예시 글
+    feedback.ts        진행판 기록의 운영자 한마디·응원 (변환, 집계)
+    seen.ts            새 소식 표시용으로 마지막 확인 시각 기억 (이 브라우저)
     firebase/          config(환경 변수), client, signups(사전 신청 저장), checkins(오늘의 인증 저장),
-                       auth(Google 로그인·운영자 확인), posts(Q&A·정보 공유 저장)
+                       auth(Google 로그인·운영자 확인), posts(Q&A·정보 공유 저장), feedback(한마디·응원 저장)
     date.ts            기록 날짜 표시
     board.ts           진행판: 기간(주차 + 마무리 날), 주간 집계, 기록 많은 순 정렬
     sampleBoard.ts     진행판 예시 참여자
   components/
     sections/          SiteHeader, Hero, HowItWorks, WeeklyBoard(진행판 미리보기),
                        Community(게시판 안내), Faq, SignupCta, Footer
-    challenge/         ChallengeBoard(오늘의 인증 + 전체 진행판)
+    challenge/         ChallengeBoard(오늘의 인증 + 새 소식 + 전체 진행판), CommentDialog(운영자 한마디)
     community/         QuestionBoard, TipBoard, AuthPanel(로그인), fields(입력칸), useAuth, usePosts
     ui/                CheckInForm, BoardTable, Button, Badge, WaveBackground, Icon, SectionHeading
   tests/               Vitest 단위 테스트
+public/medals/         주간 목표 달성 메달 이미지
 ```
 
 ## Firebase 연결

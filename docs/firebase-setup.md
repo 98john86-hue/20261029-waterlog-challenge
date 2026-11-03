@@ -47,6 +47,11 @@ NEXT_PUBLIC_FIREBASE_APP_ID=1:1234567890:web:abc...
 - `tips`(정보 공유): 누구나 읽고, Google 로그인한 사람만 써요. 링크는 `http://`, `https://` 주소만 받아요.
   삭제는 쓴 사람 또는 운영자만 할 수 있어요.
 - `admins`(운영자 목록): 콘솔에서만 바꿀 수 있어요. 사이트는 로그인한 본인이 운영자인지만 확인해요.
+- `hostComments`(진행판 기록에 운영자 한마디): 누구나 보고, 운영자만 쓰고 지워요. 300자까지.
+- `cheers`(진행판 기록에 응원 👏): 누구나 보고, 로그인한 사람이 다른 사람 기록에 한 번씩 남겨요. 지우기는 응원한 본인만.
+
+> 규칙이 바뀌면 콘솔 **Firestore → 규칙**에 최신 `firestore.rules`를 다시 붙여넣고 **게시**해 주세요.
+> 게시하지 않으면 새 기능(예: 운영자 한마디, 응원)만 저장이 거부되고, 나머지는 그대로 동작해요.
 
 ## 4. Google 로그인 켜기 (오늘의 인증, 기술 Q&A, 정보 공유)
 인증과 게시판 글쓰기는 Google 로그인한 사람만 할 수 있어요.
@@ -94,5 +99,6 @@ Google 로그인 창이 바로 닫히고 `auth/unauthorized-domain`이 찍히면
 | `src/lib/signup.ts` | 폼이 부르는 `submitSignup`. 설정값이 있으면 Firestore, 없으면 mock |
 | `src/lib/firebase/auth.ts` | Google 로그인, 운영자(`admins/{uid}`) 확인 |
 | `src/lib/firebase/posts.ts` | 기술 Q&A·정보 공유 글 저장/불러오기/답변/삭제 |
+| `src/lib/firebase/feedback.ts` | 진행판 기록의 운영자 한마디·응원 저장/불러오기 |
 | `src/lib/firebase/checkins.ts` | 오늘의 인증: 참여자·하루 인증 저장/불러오기 (`/challenge`) |
 | `firestore.rules` | 보안 규칙 |
