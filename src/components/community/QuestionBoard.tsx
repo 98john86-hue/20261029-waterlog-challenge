@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { posts as copy, qna, strokeOptions } from '@/content/landing';
 import { loadPostsApi, sampleQuestions } from '@/lib/community';
 import type { AuthUser } from '@/lib/firebase/auth';
@@ -14,6 +14,7 @@ import {
   type AnswerFilter,
   type PostErrors,
 } from '@/lib/posts';
+import { newAnswers, readSeen, writeSeen } from '@/lib/seen';
 import type { Question, Stroke } from '@/lib/types';
 import { AuthPanel } from '@/components/community/AuthPanel';
 import { focusField, PillGroup, TextField } from '@/components/community/fields';
@@ -39,6 +40,17 @@ const answerFilters = (Object.keys(qna.statusOptions) as AnswerFilter[]).map((va
 export function QuestionBoard() {
   const auth = useAuth();
   const { state, reload } = usePosts(loadQuestions, sampleQuestions);
+  // 지난번에 본 뒤로 답변이 달린 내 질문에 '새 답변' 표시. 이 페이지를 보면 확인한 것으로 친다
+  const [newAnswerIds, setNewAnswerIds] = useState<ReadonlySet<string>>(new Set());
+  const [seenFor, setSeenFor] = useState<string | null>(null);
+  const uid = auth.user?.uid;
+  useEffect(() => {
+    if (!uid || seenFor === uid || state.status !== 'ready' || state.sample) return;
+    const since = readSeen(uid).answers;
+    setNewAnswerIds(new Set(newAnswers(state.items, uid, since).map((q) => q.id)));
+    writeSeen(uid, { answers: Date.now() });
+    setSeenFor(uid);
+  }, [uid, seenFor, state]);
   const [strokeFilter, setStrokeFilter] = useState<Stroke | 'all'>('all');
   const [answerFilter, setAnswerFilter] = useState<AnswerFilter>('all');
 
@@ -81,7 +93,7 @@ export function QuestionBoard() {
           <ul className="flex flex-col gap-4">
             {visible.map((question) => (
               <li key={question.id}>
-                <QuestionCard question={question} user={auth.user} onChanged={reload} />
+                <QuestionCard question={question} user={auth.user} isNew={newAnswerIds.has(question.id)} onChanged={reload} />
               </li>
             ))}
           </ul>
@@ -176,9 +188,9 @@ function QuestionForm({ user, onPosted }: { user: AuthUser; onPosted: () => Prom
   );
 }
 
-type QuestionCardProps = { question: Question; user: AuthUser | null; onChanged: () => Promise<void> };
+type QuestionCardProps = { question: Question; user: AuthUser | null; isNew: boolean; onChanged: () => Promise<void> };
 
-function QuestionCard({ question, user, onChanged }: QuestionCardProps) {
+function QuestionCard({ question, user, isNew, onChanged }: QuestionCardProps) {
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState('');
   const isOperator = user?.isOperator ?? false;
@@ -202,6 +214,7 @@ function QuestionCard({ question, user, onChanged }: QuestionCardProps) {
         <Badge tone="tag">{question.stroke}</Badge>
         {question.answer ? <Badge tone="success">{qna.answered}</Badge> : <Badge tone="muted">{qna.waiting}</Badge>}
         {isMine ? <Badge tone="muted">{copy.mineTag}</Badge> : null}
+        {isNew ? <Badge tone="new">{qna.newAnswer}</Badge> : null}
       </div>
       <h3 className="mt-3 text-lg font-extrabold text-slate-900">{question.title}</h3>
       <p className="mt-1 text-sm text-slate-600">

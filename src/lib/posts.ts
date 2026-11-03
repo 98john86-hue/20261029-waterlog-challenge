@@ -86,13 +86,13 @@ export function formatPostDate(ms: number): string {
   return `${kst.getUTCMonth() + 1}월 ${kst.getUTCDate()}일`;
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
+export const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
 const isStroke = (value: unknown): value is Stroke => (strokeOptions as readonly unknown[]).includes(value);
 const isTipCategory = (value: unknown): value is TipCategory =>
   typeof value === 'string' && Object.hasOwn(tipsCopy.categoryOptions, value);
 
 /** Firestore Timestamp(toMillis) 또는 ms 숫자 → ms. 방금 쓴 글처럼 아직 시간이 없으면 지금 */
-function toMillis(value: unknown): number {
+export function toMillis(value: unknown): number {
   if (typeof value === 'number') return value;
   if (isRecord(value) && typeof value.toMillis === 'function') {
     const ms: unknown = value.toMillis();
@@ -123,4 +123,16 @@ export function toTip(id: string, value: unknown): Tip | null {
     return null;
   }
   return { id, authorUid, authorName, category, title, body, ...(isText(link) && LINK_PATTERN.test(link) ? { link } : {}), createdAt: toMillis(createdAt) };
+}
+
+/**
+ * 인증하면서 남긴 궁금한 점을 Q&A 질문으로 바꾼다.
+ * 제목은 첫 줄(60자가 넘으면 줄임표), 내용은 전체. 정리·검증은 부르는 쪽에서 validateQuestion으로 한다.
+ */
+export function questionFromCheckIn(authorName: string, stroke: Stroke, text: string): QuestionDraft {
+  const body = text.trim();
+  const firstLine = body.split('\n')[0]?.trim() ?? '';
+  const max = posts.limits.title;
+  const title = firstLine.length > max ? `${firstLine.slice(0, max - 1)}…` : firstLine;
+  return cleanQuestion({ authorName, stroke, title, body });
 }

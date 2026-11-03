@@ -1,19 +1,27 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { board, challenge } from '@/content/landing';
 import { getPeriods, todayInKorea, type DayLogs } from '@/lib/board';
+import { loadPostsApi } from '@/lib/community';
 import { formatLogDate } from '@/lib/date';
+import { recordKey, summarizeCheers, toggleCheer, type Cheer, type HostComment } from '@/lib/feedback';
 import type { Participant } from '@/lib/firebase/checkins';
+import { firstPostError, questionFromCheckIn, validateQuestion } from '@/lib/posts';
 import { sampleBoardRows } from '@/lib/sampleBoard';
+import { newAnswers, newComments, readSeen, writeSeen, type Seen } from '@/lib/seen';
+import type { Question } from '@/lib/types';
+import { CommentDialog } from '@/components/challenge/CommentDialog';
 import { AuthPanel } from '@/components/community/AuthPanel';
 import { useAuth } from '@/components/community/useAuth';
-import { BoardTable, type BoardRow } from '@/components/ui/BoardTable';
-import { CheckInForm, type DateOption } from '@/components/ui/CheckInForm';
+import { BoardTable, type BoardFeedback, type BoardRow } from '@/components/ui/BoardTable';
+import { CheckInForm, type CheckInSaveResult, type DateOption } from '@/components/ui/CheckInForm';
 import { SectionHeading } from '@/components/ui/SectionHeading';
 
 /** Firebase 코드는 실제로 쓸 때만 불러온다 */
 const loadCheckinsApi = () => import('@/lib/firebase/checkins');
+const loadFeedbackApi = () => import('@/lib/firebase/feedback');
 
 const periods = getPeriods(challenge);
 
@@ -35,9 +43,24 @@ function periodIndexFor(date: string): number {
   return date < challenge.startDate ? 0 : periods.length - 1;
 }
 
-type BoardState = { status: 'loading' } | { status: 'error' } | { status: 'ready'; participants: Participant[] };
+/** 한마디·응원은 부가 기능이라 못 불러와도 진행판은 보여 준다 */
+async function loadOrEmpty<T>(load: () => Promise<T[]>, label: string): Promise<T[]> {
+  try {
+    return await load();
+  } catch (e) {
+    console.warn(`${label} 불러오기 실패`, e);
+    return [];
+  }
+}
 
-/** /challenge: 위는 로그인 + 오늘의 인증, 아래는 모든 참여자의 진행판 */
+type BoardState =
+  | { status: 'loading' }
+  | { status: 'error' }
+  | { status: 'ready'; participants: Participant[]; comments: HostComment[]; cheers: Cheer[] };
+
+type CommentTarget = { row: BoardRow; date: string };
+
+/** /challenge: 위는 로그인 + 새 소식 + 오늘의 인증, 아래는 모든 참여자의 진행판 */
 export function ChallengeBoard() {
   const auth = useAuth();
   const { connected, user } = auth;
@@ -48,6 +71,10 @@ export function ChallengeBoard() {
   const [name, setName] = useState('');
   const [goal, setGoal] = useState<number>(challenge.weeklyMin);
   const [profileFor, setProfileFor] = useState<string | null>(null);
+  const [myQuestions, setMyQuestions] = useState<Question[]>([]);
+  const [seen, setSeen] = useState<Seen | null>(null);
+  const [commentTarget, setCommentTarget] = useState<CommentTarget | null>(null);
+  const [cheerError, setCheerError] = useState('');
 
   useEffect(() => {
     const now = todayInKorea();
@@ -57,8 +84,13 @@ export function ChallengeBoard() {
 
   const reload = useCallback(async () => {
     try {
-      const participants = await (await loadCheckinsApi()).loadParticipants();
-      setBoardState({ status: 'ready', participants });
+      const [checkins, feedback] = await Promise.all([loadCheckinsApi(), loadFeedbackApi()]);
+      const [participants, comments, cheers] = await Promise.all([
+        checkins.loadParticipants(),
+        loadOrEmpty(feedback.loadHostComments, '운영자 한마디'),
+        loadOrEmpty(feedback.loadCheers, '응원'),
+      ]);
+      setBoardState({ status: 'ready', participants, comments, cheers });
     } catch (e) {
       console.error('진행판 불러오기 실패', e);
       setBoardState({ status: 'error' });
@@ -69,8 +101,22 @@ export function ChallengeBoard() {
     if (connected) void reload();
   }, [connected, reload]);
 
+  // 새 소식: 내 질문의 답변과, 마지막으로 확인한 시각
+  useEffect(() => {
+    if (!user) return;
+    setSeen(readSeen(user.uid));
+    let cancelled = false;
+    void loadOrEmpty(async () => (await loadPostsApi()).loadQuestions(), '질문').then((questions) => {
+      if (!cancelled) setMyQuestions(questions.filter((q) => q.authorUid === user.uid));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   // 로그인한 사람이 이미 참여 중이면 참여 아이디와 목표를 한 번 채워 둔다
-  const participants = boardState.status === 'ready' ? boardState.participants : null;
+  const ready = boardState.status === 'ready' ? boardState : null;
+  const participants = ready?.participants ?? null;
   useEffect(() => {
     if (!user || !participants || profileFor === user.uid) return;
     const me = participants.find((p) => p.uid === user.uid);
@@ -85,24 +131,109 @@ export function ChallengeBoard() {
   const openDates = today ? allDateOptions.filter((option) => option.date <= today) : [];
   const initialDate = openDates.some((o) => o.date === today) ? (today ?? '') : (openDates.at(-1)?.date ?? '');
 
-  const saveDay = async (date: string, next: DayLogs) => {
+  const answeredCount = user && seen ? newAnswers(myQuestions, user.uid, seen.answers).length : 0;
+  const unseenComments = useMemo(
+    () => (user && seen && ready ? newComments(ready.comments, user.uid, seen.comments) : []),
+    [user, seen, ready],
+  );
+
+  const confirmComments = () => {
     if (!user) return;
+    writeSeen(user.uid, { comments: Date.now() });
+    setSeen(readSeen(user.uid));
+  };
+
+  const saveDay = async (date: string, next: DayLogs, question: string): Promise<CheckInSaveResult> => {
+    if (!user) return { question: 'none' };
     const api = await loadCheckinsApi();
     await api.saveParticipant(user.uid, name.trim(), goal);
     await api.saveDay(user.uid, date, next);
+
+    let result: CheckInSaveResult = { question: 'none' };
+    if (question) {
+      try {
+        const draft = questionFromCheckIn(name.trim(), next.learning?.stroke ?? '기타', question);
+        if (firstPostError(validateQuestion(draft))) throw new Error('질문 내용이 올바르지 않아요');
+        await (await loadPostsApi()).addQuestion(user.uid, draft);
+        result = { question: 'sent' };
+      } catch (e) {
+        console.error('인증하며 남긴 질문 저장 실패', e);
+        result = { question: 'failed' };
+      }
+    }
     await reload();
     setPeriodIndex(periodIndexFor(date));
+    return result;
+  };
+
+  const handleToggleCheer = async (row: BoardRow, date: string) => {
+    if (!user || !ready) return;
+    const mine = ready.cheers.some((c) => c.target === row.id && c.date === date && c.from === user.uid);
+    const flip = () =>
+      setBoardState((prev) =>
+        prev.status === 'ready' ? { ...prev, cheers: toggleCheer(prev.cheers, row.id, date, user.uid) } : prev,
+      );
+    // 누르자마자 화면에 반영하고, 저장에 실패하면 되돌린다
+    flip();
+    setCheerError('');
+    try {
+      const api = await loadFeedbackApi();
+      await (mine ? api.removeCheer(row.id, date, user.uid) : api.addCheer(row.id, date, user.uid));
+    } catch (e) {
+      console.error('응원 저장 실패', e);
+      flip();
+      setCheerError(board.cheerError);
+    }
   };
 
   const rows: BoardRow[] = connected
     ? (participants ?? []).map((p) => ({ id: p.uid, name: p.name, isMe: p.uid === user?.uid, goal: p.goal, logs: p.logs }))
     : sampleBoardRows;
 
+  const feedback: BoardFeedback | undefined = ready
+    ? {
+        comments: new Map(ready.comments.map((c) => [recordKey(c.uid, c.date), c])),
+        newCommentKeys: new Set(unseenComments.map((c) => recordKey(c.uid, c.date))),
+        cheers: summarizeCheers(ready.cheers, user?.uid),
+        ...(user ? { onToggleCheer: (row: BoardRow, date: string) => void handleToggleCheer(row, date) } : {}),
+        ...(user?.isOperator ? { onComment: (row: BoardRow, date: string) => setCommentTarget({ row, date }) } : {}),
+      }
+    : undefined;
+
+  const editing = commentTarget && ready ? ready.comments.find((c) => c.uid === commentTarget.row.id && c.date === commentTarget.date) : undefined;
+
   return (
     <section aria-labelledby="challenge-title" className="bg-sky-50 px-4 py-14 sm:py-20">
       <div className="mx-auto max-w-xl">
         <SectionHeading id="challenge-title" eyebrow={board.eyebrow} title={board.title} description={board.description} />
         <AuthPanel controls={auth} prompt={board.signInPrompt} />
+
+        {answeredCount > 0 || unseenComments.length > 0 ? (
+          <div role="status" className="mt-6 rounded-3xl border-2 border-amber-300 bg-amber-50 p-5 shadow-sm">
+            <p className="font-extrabold text-amber-900">💬 {board.newsTitle}</p>
+            {answeredCount > 0 ? (
+              <p className="mt-2 text-slate-800">
+                {board.newAnswers(answeredCount)}{' '}
+                <Link href="/qna" className="font-bold text-teal-800 underline underline-offset-4">
+                  {board.newAnswersLink}
+                </Link>
+              </p>
+            ) : null}
+            {unseenComments.length > 0 ? (
+              <p className="mt-2 text-slate-800">
+                {board.newComments(unseenComments.length)}{' '}
+                <button
+                  type="button"
+                  onClick={confirmComments}
+                  className="font-bold text-teal-800 underline underline-offset-4"
+                >
+                  {board.newCommentsDone}
+                </button>
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
         {user && profileFor === user.uid ? (
           openDates.length > 0 ? (
             <div className="mt-6">
@@ -131,13 +262,39 @@ export function ChallengeBoard() {
         {connected && boardState.status === 'error' ? (
           <p className="text-center font-medium text-red-700">{board.loadError}</p>
         ) : null}
-        {!connected || boardState.status === 'ready' ? (
+        {!connected || ready ? (
           <>
-            <BoardTable rows={rows} periodIndex={periodIndex} onPeriodChange={setPeriodIndex} sample={!connected} />
+            <BoardTable
+              rows={rows}
+              periodIndex={periodIndex}
+              onPeriodChange={setPeriodIndex}
+              sample={!connected}
+              feedback={feedback}
+            />
+            <p role="alert" className="mt-2 text-center text-sm font-medium text-red-700 empty:hidden">
+              {cheerError}
+            </p>
             {connected && rows.length === 0 ? <p className="mt-4 text-center text-slate-600">{board.emptyBoard}</p> : null}
           </>
         ) : null}
       </div>
+
+      {commentTarget ? (
+        <CommentDialog
+          key={recordKey(commentTarget.row.id, commentTarget.date)}
+          title={board.commentDialogTitle(commentTarget.row.name, formatLogDate(commentTarget.date))}
+          initialBody={editing?.body ?? ''}
+          onSave={async (body) => {
+            await (await loadFeedbackApi()).saveHostComment(commentTarget.row.id, commentTarget.date, body);
+            await reload();
+          }}
+          onDelete={async () => {
+            await (await loadFeedbackApi()).deleteHostComment(commentTarget.row.id, commentTarget.date);
+            await reload();
+          }}
+          onClose={() => setCommentTarget(null)}
+        />
+      ) : null}
     </section>
   );
 }

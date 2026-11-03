@@ -30,6 +30,21 @@ service cloud.firestore {
       }
     }
 
+    // 진행판 기록에 운영자 한마디: 누구나 보고, 운영자만 쓰고 지운다. 문서 ID는 {참여자 uid}_{날짜}
+    match /hostComments/{commentId} {
+      allow read: if true;
+      allow create, update: if isOperator() && isValidHostComment(commentId, request.resource.data);
+      allow delete: if isOperator();
+    }
+
+    // 진행판 기록에 응원(👏): 누구나 보고, 로그인한 사람이 남의 기록에 하나씩. 지우기는 응원한 본인만.
+    // 문서 ID는 {기록 주인 uid}_{날짜}_{응원한 uid}라 한 사람이 같은 기록에 두 번 응원할 수 없다
+    match /cheers/{cheerId} {
+      allow read: if true;
+      allow create: if isValidCheer(cheerId, request.resource.data);
+      allow delete: if request.auth != null && resource.data.from == request.auth.uid;
+    }
+
     function isSelf(uid) {
       return request.auth != null && request.auth.uid == uid;
     }
@@ -68,6 +83,28 @@ service cloud.firestore {
         && v.keys().hasOnly(['laneLength', 'laps'])
         && v.laneLength in [25, 50]
         && v.laps is int && v.laps >= 1 && v.laps <= 200;
+    }
+
+    function isValidHostComment(id, d) {
+      return d.keys().hasAll(['uid', 'date', 'body', 'updatedAt'])
+        && d.keys().hasOnly(['uid', 'date', 'body', 'updatedAt'])
+        && d.uid is string
+        && d.date in challengeDates()
+        && id == d.uid + '_' + d.date
+        && isText(d.body, 300)
+        && d.updatedAt == request.time;
+    }
+
+    function isValidCheer(id, d) {
+      return request.auth != null
+        && d.keys().hasAll(['target', 'date', 'from', 'createdAt'])
+        && d.keys().hasOnly(['target', 'date', 'from', 'createdAt'])
+        && d.from == request.auth.uid
+        && d.target is string
+        && d.target != d.from
+        && d.date in challengeDates()
+        && id == d.target + '_' + d.date + '_' + d.from
+        && d.createdAt == request.time;
     }
 
     function isValidLearning(v) {
