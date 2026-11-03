@@ -34,25 +34,6 @@ type BoardTableProps = {
   feedback?: BoardFeedback;
 };
 
-/** n주차(1부터)의 목표 달성 메달 */
-const medalFor = (week: number) => board.medals.find((m) => m.week === week);
-
-function Medal({ week, size }: { week: number; size: 'sm' | 'lg' }) {
-  const medal = medalFor(week);
-  if (!medal) return null;
-  const px = size === 'sm' ? 32 : 56;
-  return (
-    // 작은 정적 이미지라 next/image 대신 img (public/medals)
-    <img
-      src={medal.src}
-      alt={board.medalAlt(week, medal.name)}
-      width={px}
-      height={px}
-      className={`${size === 'sm' ? 'size-8' : 'size-14'} shrink-0 drop-shadow-sm`}
-    />
-  );
-}
-
 export const boardPeriods = getPeriods(challenge);
 
 const periodLabel = (index: number) => {
@@ -172,17 +153,6 @@ export function BoardTable({ rows, periodIndex, onPeriodChange, sample = false, 
             <Badge tone="sample">{board.sampleNotice}</Badge>
           </div>
         ) : null}
-        <div className="mt-4">
-          <p className="text-sm font-bold text-slate-700">{board.medalsTitle}</p>
-          <ul className="mt-2 flex justify-center gap-5">
-            {board.medals.map((medal) => (
-              <li key={medal.week} className="flex flex-col items-center gap-1 text-xs font-bold text-slate-700">
-                <Medal week={medal.week} size="lg" />
-                {board.weekLabel(medal.week)}
-              </li>
-            ))}
-          </ul>
-        </div>
       </div>
 
       <div className="mt-5 flex flex-col gap-3 px-4 sm:flex-row sm:items-center sm:justify-between">
@@ -268,7 +238,11 @@ export function BoardTable({ rows, periodIndex, onPeriodChange, sample = false, 
                         <span className="text-slate-600" aria-label={board.goalProgressLabel(summary.days, row.goal)}>
                           {board.weeklyCount(summary.days, row.goal)}
                         </span>
-                        {summary.days >= row.goal && period?.kind === 'week' ? <Medal week={period.week} size="sm" /> : null}
+                        {summary.days >= row.goal ? (
+                          <span role="img" aria-label={board.goalMetLabel} className="text-lg leading-none">
+                            {board.goalMedal}
+                          </span>
+                        ) : null}
                       </span>
                     ) : summary.days > 0 ? (
                       <span className="mt-1 block font-bold text-emerald-800">{board.bonusDone}</span>

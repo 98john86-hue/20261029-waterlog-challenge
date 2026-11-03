@@ -7,7 +7,7 @@
 - `/` 랜딩 페이지 (소개, 진행판 미리보기, 사전 등록)
 - `/challenge` 오늘의 인증: Google 로그인 후 매일 인증, 모든 참여자의 진행판
   - 인증하면서 운영자에게 궁금한 점을 남기면 기술 Q&A 질문으로 올라감
-  - 기록마다 운영자 한마디(💬)와 참여자 응원(👏), 주간 목표 달성 메달(1주차 돌고래, 2주차 수달, 3주차 고래)
+  - 기록마다 운영자 한마디(💬)와 참여자 응원(👏), 주간 목표를 채우면 🏅
   - 내 질문에 답변이나 내 기록에 한마디가 달리면 '새 소식'으로 알려 줌
 - `/qna` 수영 기술 Q&A: 참여자가 질문하고 운영자가 답변
 - `/tips` 수영 정보 공유 게시판: 참여자끼리 팁·용품·수영장 정보 공유
@@ -52,7 +52,6 @@ src/
     community/         QuestionBoard, TipBoard, AuthPanel(로그인), fields(입력칸), useAuth, usePosts
     ui/                CheckInForm, BoardTable, Button, Badge, WaveBackground, Icon, SectionHeading
   tests/               Vitest 단위 테스트
-public/medals/         주간 목표 달성 메달 이미지
 ```
 
 ## Firebase 연결

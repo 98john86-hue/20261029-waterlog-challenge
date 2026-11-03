@@ -101,7 +101,7 @@ export const board = {
     nameRequired: '참여 아이디를 입력해 주세요.',
     namePlaceholder: '예: 물개',
     goalLabel: '나의 주간 목표',
-    goalHint: '한 주에 몇 번 인증할지 정해요. 채우면 진행판에 그 주의 메달이 붙어요.',
+    goalHint: '한 주에 몇 번 인증할지 정해요. 채우면 진행판에 🏅가 붙어요.',
     goalOption: (n: number) => `주 ${n}회`,
     distanceLabel: '오늘의 거리 기록',
     laneLabel: '레인 길이',
@@ -141,16 +141,10 @@ export const board = {
   participantHeader: '참여자',
   meTag: '나',
   weeklyCount: (count: number, goal: number) => `${count}/${goal}회`,
-  // 주간 목표 달성 메달 (public/medals). 1주차 돌고래, 2주차 수달, 3주차 고래
-  medals: [
-    { week: 1, src: '/medals/week1-dolphin.webp', name: '돌고래' },
-    { week: 2, src: '/medals/week2-otter.webp', name: '수달' },
-    { week: 3, src: '/medals/week3-whale.webp', name: '고래' },
-  ],
-  medalsTitle: '주간 목표 달성 메달',
-  medalAlt: (week: number, name: string) => `${week}주차 목표 달성 메달 (${name})`,
+  goalMedal: '🏅',
+  goalMetLabel: '주간 목표 달성',
   goalProgressLabel: (count: number, goal: number) => `주간 목표 ${goal}회 중 ${count}회 인증`,
-  goalHint: '각자 정한 주간 목표(주 3~5회)를 채우면 그 주의 메달을 받아요',
+  goalHint: '각자 정한 주간 목표(주 3~5회)를 채우면 🏅',
   // 기록마다: 응원(👏)과 운영자 한마디
   cheer: '👏',
   cheerLabel: (count: number, mine: boolean) => (mine ? `응원 취소하기, ${count}명이 응원` : `응원하기, ${count}명이 응원`),
