@@ -32,6 +32,10 @@ export const hero = {
   subcopyLines: ['오늘 익힌 기술을 한 줄로 남기고,', '내일 다시 적용해 봅시다.'],
   bodyLines: ['거리 또는 기술, 하나만 기록해도 인증 완료.', '11월 9일부터 3주간, 평일 주 3~5회', '11월 30일은 마무리 날이에요.'],
   primaryCta: '챌린지 사전 등록하기',
+  // 카카오톡 오픈채팅 (사전 등록 버튼 아래)
+  chatCta: '참여자 톡방 들어가기',
+  chatUrl: 'https://open.kakao.com/o/g7nIIEVi',
+  newWindow: '(새 창)',
 } as const;
 
 export const howItWorks = {

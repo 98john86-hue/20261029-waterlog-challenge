@@ -34,6 +34,19 @@ export function Hero() {
         <ButtonLink href="#signup" className="mt-8 w-full sm:w-auto">
           {hero.primaryCta}
         </ButtonLink>
+        <div className="mt-3">
+          {/* 카카오톡 노란색 버튼. 외부 사이트라 새 창으로 연다 */}
+          <a
+            href={hero.chatUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#FEE500] px-6 py-3 font-bold text-[#191919] shadow-md transition hover:-translate-y-0.5 hover:brightness-95 sm:w-auto"
+          >
+            <span aria-hidden="true">💬</span>
+            {hero.chatCta}
+            <span className="sr-only">{hero.newWindow}</span>
+          </a>
+        </div>
       </div>
       <WaveBackground />
     </section>
