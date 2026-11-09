@@ -13,8 +13,10 @@ import {
   type SignupErrors,
   type SignupField,
 } from '@/lib/validation';
-import { buttonStyles } from '@/components/ui/Button';
+import { ButtonLink, buttonStyles } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
+import { KakaoChatLink } from '@/components/ui/KakaoChatLink';
+import { useChallengePhase } from '@/components/useChallengePhase';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
 
@@ -144,13 +146,16 @@ export function SignupCta() {
   };
 
   const loading = status === 'loading';
+  // 챌린지가 시작되면 신청 폼 대신 오늘의 인증으로 안내한다 (src/lib/phase.ts)
+  const phase = useChallengePhase();
+  const joinCopy = phase.kind === 'before' ? null : signup[phase.kind];
 
   return (
     <section id="signup" aria-labelledby="signup-title" className="scroll-mt-16 bg-teal-800 px-4 py-14 sm:py-20">
       <div className="mx-auto max-w-xl">
         {/* 워터로그 챌린지 이야기: 한 항목이 한 줄이 되도록 화면 폭에 맞춰 글자 크기를 조절 */}
         <div className="mb-10 text-center text-white">
-          <p className="text-sm font-bold tracking-wider text-cyan-100">{signup.eyebrow}</p>
+          <p className="text-sm font-bold tracking-wider text-cyan-100">{joinCopy?.eyebrow ?? signup.eyebrow}</p>
           <h2 id="signup-title" className="mt-2 text-2xl font-extrabold sm:text-4xl">
             {story.title}
           </h2>
@@ -172,10 +177,19 @@ export function SignupCta() {
               </span>
             ))}
           </p>
-          <p className="mt-8 text-sm text-cyan-100">{signup.description}</p>
+          {joinCopy ? null : <p className="mt-8 text-sm text-cyan-100">{signup.description}</p>}
         </div>
 
-        {status === 'success' ? (
+        {joinCopy ? (
+          <div className="flex flex-col items-center gap-3 rounded-3xl bg-white p-6 text-center shadow-2xl sm:p-8">
+            <p className="text-xl font-extrabold text-slate-900">{joinCopy.title}</p>
+            <p className="leading-relaxed text-slate-700">{joinCopy.description}</p>
+            <ButtonLink href="/challenge" className="mt-3 w-full sm:w-auto">
+              {joinCopy.cta}
+            </ButtonLink>
+            <KakaoChatLink />
+          </div>
+        ) : status === 'success' ? (
           <div ref={successRef} tabIndex={-1} role="status" className="rounded-3xl bg-white p-8 text-center shadow-2xl">
             <span className="mx-auto grid size-16 place-items-center rounded-full bg-emerald-100 text-emerald-700">
               <Icon name="check" className="size-8" />
