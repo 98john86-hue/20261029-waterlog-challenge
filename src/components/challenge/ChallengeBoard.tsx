@@ -16,6 +16,7 @@ import { CommentDialog } from '@/components/challenge/CommentDialog';
 import { AuthPanel } from '@/components/community/AuthPanel';
 import { useAuth } from '@/components/community/useAuth';
 import { BoardTable, type BoardFeedback, type BoardRow } from '@/components/ui/BoardTable';
+import { buttonStyles } from '@/components/ui/Button';
 import { CheckInForm, type CheckInSaveResult, type DateOption } from '@/components/ui/CheckInForm';
 import { SectionHeading } from '@/components/ui/SectionHeading';
 
@@ -206,8 +207,11 @@ export function ChallengeBoard() {
     <section aria-labelledby="challenge-title" className="bg-sky-50 px-4 py-14 sm:py-20">
       <div className="mx-auto max-w-xl">
         <SectionHeading id="challenge-title" eyebrow={board.eyebrow} title={board.title} description={board.description} />
-        <AuthPanel controls={auth} prompt={board.signInPrompt} />
-
+        <div className="-mt-2 flex justify-center">
+          <a href="#checkin" className={buttonStyles('outline', 'sm')}>
+            {board.jumpToCheckin}
+          </a>
+        </div>
         {answeredCount > 0 || unseenComments.length > 0 ? (
           <div role="status" className="mt-6 rounded-3xl border-2 border-amber-300 bg-amber-50 p-5 shadow-sm">
             <p className="font-extrabold text-amber-900">💬 {board.newsTitle}</p>
@@ -233,7 +237,34 @@ export function ChallengeBoard() {
             ) : null}
           </div>
         ) : null}
+      </div>
 
+      {/* 진행판을 맨 위에: 다른 참여자의 기록을 보고 참고한 뒤 아래에서 인증한다 */}
+      <div className="mx-auto mt-8 max-w-4xl" aria-live="polite">
+        {connected && boardState.status === 'loading' ? <p className="text-center text-slate-600">{board.loading}</p> : null}
+        {connected && boardState.status === 'error' ? (
+          <p className="text-center font-medium text-red-700">{board.loadError}</p>
+        ) : null}
+        {!connected || ready ? (
+          <>
+            <BoardTable
+              rows={rows}
+              periodIndex={periodIndex}
+              onPeriodChange={setPeriodIndex}
+              sample={!connected}
+              feedback={feedback}
+            />
+            <p role="alert" className="mt-2 text-center text-sm font-medium text-red-700 empty:hidden">
+              {cheerError}
+            </p>
+            {connected && rows.length === 0 ? <p className="mt-4 text-center text-slate-600">{board.emptyBoard}</p> : null}
+          </>
+        ) : null}
+      </div>
+
+      <div id="checkin" className="mx-auto mt-14 max-w-xl scroll-mt-20">
+        <h3 className="mb-4 text-center text-xl font-extrabold text-slate-900 sm:text-2xl">{board.checkinTitle}</h3>
+        <AuthPanel controls={auth} prompt={board.signInPrompt} />
         {user && profileFor === user.uid ? (
           openDates.length > 0 ? (
             <div className="mt-6">
@@ -254,28 +285,6 @@ export function ChallengeBoard() {
               {board.notOpenYet(formatLogDate(challenge.startDate))}
             </p>
           )
-        ) : null}
-      </div>
-
-      <div className="mx-auto mt-12 max-w-4xl" aria-live="polite">
-        {connected && boardState.status === 'loading' ? <p className="text-center text-slate-600">{board.loading}</p> : null}
-        {connected && boardState.status === 'error' ? (
-          <p className="text-center font-medium text-red-700">{board.loadError}</p>
-        ) : null}
-        {!connected || ready ? (
-          <>
-            <BoardTable
-              rows={rows}
-              periodIndex={periodIndex}
-              onPeriodChange={setPeriodIndex}
-              sample={!connected}
-              feedback={feedback}
-            />
-            <p role="alert" className="mt-2 text-center text-sm font-medium text-red-700 empty:hidden">
-              {cheerError}
-            </p>
-            {connected && rows.length === 0 ? <p className="mt-4 text-center text-slate-600">{board.emptyBoard}</p> : null}
-          </>
         ) : null}
       </div>
 

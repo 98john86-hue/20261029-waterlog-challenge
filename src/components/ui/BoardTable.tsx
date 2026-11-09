@@ -3,10 +3,12 @@
 import { useMemo, useState } from 'react';
 import { board, challenge, weekdays } from '@/content/landing';
 import { formatShortDate, getDayLogs, getPeriods, rankByWeek, summarizeWeek, type DayLogs } from '@/lib/board';
+import { formatLogDate } from '@/lib/date';
 import { formatMeters, getTotalDistance } from '@/lib/distance';
 import { recordKey, type CheerSummary, type HostComment } from '@/lib/feedback';
 import type { SwimLog } from '@/lib/types';
 import { Badge } from '@/components/ui/Badge';
+import { RecordDialog } from '@/components/ui/RecordDialog';
 
 export type BoardRow = { id: string; name: string; isMe: boolean; goal: number; logs: readonly SwimLog[] };
 
@@ -54,7 +56,10 @@ const zoomStyles = [
   { text: 'text-base', table: 'min-w-[860px]', clamp: '' },
 ] as const;
 
-function DayCell({ day, clamp }: { day: DayLogs; clamp: string }) {
+type DayCellProps = { day: DayLogs; clamp: string; label: string; onOpen: () => void };
+
+/** 칸이 좁아 글이 잘리므로, 기록은 버튼으로 만들어 누르면 전체 내용 창을 연다 */
+function DayCell({ day, clamp, label, onOpen }: DayCellProps) {
   if (!day.distance && !day.learning) {
     return (
       <span className="block text-slate-500">
@@ -64,7 +69,12 @@ function DayCell({ day, clamp }: { day: DayLogs; clamp: string }) {
     );
   }
   return (
-    <span className="flex flex-col gap-1">
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={label}
+      className="-m-1 flex w-[calc(100%+0.5rem)] cursor-pointer flex-col gap-1 rounded-lg p-1 text-left hover:bg-sky-50"
+    >
       {day.distance ? (
         <span className="font-extrabold text-sky-800">{formatMeters(getTotalDistance(day.distance))}</span>
       ) : null}
@@ -74,7 +84,7 @@ function DayCell({ day, clamp }: { day: DayLogs; clamp: string }) {
           {day.learning.note}
         </span>
       ) : null}
-    </span>
+    </button>
   );
 }
 
@@ -142,6 +152,9 @@ export function BoardTable({ rows, periodIndex, onPeriodChange, sample = false, 
   const isWeek = period?.kind === 'week';
   const ranked = useMemo(() => rankByWeek(rows, dates, isWeek), [rows, dates, isWeek]);
   const style = zoomStyles[zoom] ?? zoomStyles[1];
+  // 전체 내용을 보고 있는 기록
+  const [opened, setOpened] = useState<{ row: BoardRow; date: string } | null>(null);
+  const openedKey = opened ? recordKey(opened.row.id, opened.date) : '';
 
   return (
     <div>
@@ -195,6 +208,7 @@ export function BoardTable({ rows, periodIndex, onPeriodChange, sample = false, 
           ? `${formatShortDate(dates[0] ?? '')}~${formatShortDate(dates.at(-1) ?? '')} · ${board.goalHint}`
           : `${formatShortDate(dates[0] ?? '')} · ${board.bonusHint}`}
       </p>
+      <p className="mt-1 px-4 text-xs font-bold text-teal-800">👆 {board.openHint}</p>
 
       <div className="relative mx-4 mt-3 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         {/* 마무리 날은 한 칸뿐이라 최소 너비 없이 화면에 맞춘다 */}
@@ -252,7 +266,12 @@ export function BoardTable({ rows, periodIndex, onPeriodChange, sample = false, 
                     const day = getDayLogs(row.logs, date);
                     return (
                       <td key={date} className="px-2 py-3 align-top leading-snug">
-                        <DayCell day={day} clamp={style.clamp} />
+                        <DayCell
+                          day={day}
+                          clamp={style.clamp}
+                          label={board.openRecordLabel(row.name, formatLogDate(date))}
+                          onOpen={() => setOpened({ row, date })}
+                        />
                         {feedback && (day.distance || day.learning) ? (
                           <CellFeedback row={row} date={date} feedback={feedback} />
                         ) : null}
@@ -266,6 +285,17 @@ export function BoardTable({ rows, periodIndex, onPeriodChange, sample = false, 
         </table>
       </div>
       {isWeek ? <p className="mt-2 px-4 text-xs text-slate-600">{board.zoomHint}</p> : null}
+      {opened ? (
+        <RecordDialog
+          key={openedKey}
+          name={opened.row.name}
+          date={opened.date}
+          day={getDayLogs(opened.row.logs, opened.date)}
+          comment={feedback?.comments.get(openedKey)}
+          cheerCount={feedback?.cheers.get(openedKey)?.count ?? 0}
+          onClose={() => setOpened(null)}
+        />
+      ) : null}
     </div>
   );
 }
