@@ -23,6 +23,11 @@ export const header = {
   ],
   navLabel: '주요 메뉴',
   cta: '사전 등록',
+  // 챌린지 단계별 오른쪽 위 버튼 (src/lib/phase.ts)
+  phaseCta: {
+    during: { href: '/challenge', label: '오늘의 인증' },
+    after: { href: '/challenge', label: '기록 보기' },
+  },
 } as const;
 
 export const hero = {
@@ -36,6 +41,14 @@ export const hero = {
   chatCta: '참여자 톡방 들어가기',
   chatUrl: 'https://open.kakao.com/o/g7nIIEVi',
   newWindow: '(새 창)',
+  // 챌린지 단계별 위쪽 표시와 큰 버튼 (시작 전에는 위의 eyebrow, primaryCta)
+  phase: {
+    duringEyebrow: (label: string) => `챌린지 진행 중 · ${label}`,
+    bonusLabel: '마무리 날',
+    duringCta: '오늘의 인증 하러 가기',
+    afterEyebrow: '챌린지 종료',
+    afterCta: '3주의 기록 다시 보기',
+  },
 } as const;
 
 export const howItWorks = {
@@ -250,6 +263,19 @@ export const faq = {
 export const signup = {
   eyebrow: '사전 등록',
   description: '사전 신청하신 분께 챌린지 일정과 참여 방법을 가장 먼저 알려드려요.',
+  // 챌린지가 시작되면 신청 폼 대신 보여 주는 안내
+  during: {
+    eyebrow: '지금 참여하기',
+    title: '지금 바로 함께해요',
+    description: '사전 등록을 안 했어도 괜찮아요. Google 로그인만 하면 오늘부터 바로 인증할 수 있어요. 11월 30일 마무리 날까지 함께해요.',
+    cta: '오늘의 인증 하러 가기',
+  },
+  after: {
+    eyebrow: '챌린지 종료',
+    title: '함께해 주셔서 고마워요',
+    description: '3주 동안 쌓인 기록은 진행판에서 다시 볼 수 있어요. 다음 챌린지 소식은 참여자 톡방에서 알려 드릴게요.',
+    cta: '3주의 기록 다시 보기',
+  },
   requiredNotice: '* 표시는 필수 질문이에요',
   requiredMark: '필수',
   answerPlaceholder: '내 답변',

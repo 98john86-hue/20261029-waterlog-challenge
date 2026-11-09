@@ -12,6 +12,7 @@ import {
   summarizeWeek,
   todayInKorea,
 } from '@/lib/board';
+import { getChallengePhase } from '@/lib/phase';
 import type { SwimLog } from '@/lib/types';
 
 const START = '2026-11-02'; // 월요일
@@ -124,5 +125,31 @@ describe('챌린지 기간 (3주 + 마무리 날)', () => {
     ];
     expect(rankByWeek(rows, bonus).map((r) => r.id)).toEqual(['goalLow', 'more']);
     expect(rankByWeek(rows, bonus, false).map((r) => r.id)).toEqual(['more', 'goalLow']);
+  });
+});
+
+describe('챌린지 단계 (홈 화면)', () => {
+  const schedule = { startDate: '2026-11-09', weeks: 3, bonusDate: '2026-11-30' };
+
+  it('시작일 전에는 사전 등록', () => {
+    expect(getChallengePhase('2026-11-08', schedule)).toEqual({ kind: 'before' });
+  });
+
+  it('시작일부터 주차를 센다 (주말도 진행 중)', () => {
+    expect(getChallengePhase('2026-11-09', schedule)).toEqual({ kind: 'during', week: 1 });
+    expect(getChallengePhase('2026-11-15', schedule)).toEqual({ kind: 'during', week: 1 }); // 일요일
+    expect(getChallengePhase('2026-11-16', schedule)).toEqual({ kind: 'during', week: 2 });
+    expect(getChallengePhase('2026-11-27', schedule)).toEqual({ kind: 'during', week: 3 });
+    expect(getChallengePhase('2026-11-29', schedule)).toEqual({ kind: 'during', week: 3 }); // 마무리 날 전 주말
+  });
+
+  it('마무리 날, 그다음 날부터는 종료', () => {
+    expect(getChallengePhase('2026-11-30', schedule)).toEqual({ kind: 'during', week: 'bonus' });
+    expect(getChallengePhase('2026-12-01', schedule)).toEqual({ kind: 'after' });
+  });
+
+  it('마무리 날이 없으면 마지막 주 금요일까지', () => {
+    expect(getChallengePhase('2026-11-27', { startDate: '2026-11-09', weeks: 3 })).toEqual({ kind: 'during', week: 3 });
+    expect(getChallengePhase('2026-11-28', { startDate: '2026-11-09', weeks: 3 })).toEqual({ kind: 'after' });
   });
 });

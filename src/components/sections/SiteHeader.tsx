@@ -1,5 +1,5 @@
 import { header, site } from '@/content/landing';
-import { ButtonLink } from '@/components/ui/Button';
+import { HeaderCta } from '@/components/sections/HeaderCta';
 import { Icon } from '@/components/ui/Icon';
 
 export function SiteHeader() {
@@ -22,9 +22,7 @@ export function SiteHeader() {
               </li>
             ))}
           </ul>
-          <ButtonLink href="/#signup" size="sm">
-            {header.cta}
-          </ButtonLink>
+          <HeaderCta />
         </nav>
       </div>
     </header>
